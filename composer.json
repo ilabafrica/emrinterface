@@ -1,0 +1,16 @@
+
+{
+    "name": "ilabafrica/emrinterface",
+    "authors": [
+        {
+            "name": "ereng",
+            "email": "aereng@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "ILabAfrica\\EMRInterface\\": "src/"
+        }
+    }
+}
