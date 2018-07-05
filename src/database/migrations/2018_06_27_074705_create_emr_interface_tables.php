@@ -18,7 +18,7 @@ class CreateEmrInterfaceTables extends Migration
             $table->increments('id');
             $table->integer('request_status_id')
                 ->unsigned()
-                ->default(DiagnosticOrderStatus::RESULT_PENDING);
+                ->default(DiagnosticOrderStatus::result_pending);
             $table->integer('test_id')->unsigned();
             $table->timestamps();
         });
@@ -32,8 +32,16 @@ class CreateEmrInterfaceTables extends Migration
 
        /* Diagnostic Order Statuses */
         $diagnosticOrderStatuses = [
-            ['id' => '1', 'name' => 'result_pending'],
-            ['id' => '2', 'name' => 'result_sent'],
+            [
+                'id' => '1',
+                'code' => 'result_pending',
+                'display' => 'Result Pending'
+            ],
+            [
+                'id' => '2',
+                'code' => 'result_sent',
+                'display' => 'Result Sent'
+            ],
         ];
 
         foreach ($diagnosticOrderStatuses as $diagnosticOrderStatus) {

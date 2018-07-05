@@ -1,8 +1,16 @@
 <?php
 
 namespace ILabAfrica\EMRInterface;
-use App\Models\TestType;
+use Auth;
+use App\Models\Name;
+use App\Models\Test;
+use App\Models\Gender;
 use App\Models\Patient;
+use App\Models\TestType;
+use App\Models\Encounter;
+use App\Models\TestStatus;
+use Illuminate\Http\Request;
+use App\Models\TestTypeCategory;
 use ILabAfrica\EMRInterface\DiagnosticOrder;
 use ILabAfrica\EMRInterface\DiagnosticOrderStatus;
 
@@ -11,14 +19,14 @@ class EMR {
     // return test menu
     public function testMenu()
     {
-        $testTypes = TestType::select('name')->get();
+        $testTypes = TestTypeCategory::with('testTypes')->get();
+
         return response()->json($testTypes);
     }
 
     // receive and add test request on queue
     public function receiveTestRequest(Request $request)
     {
-
         $rules = [
             'subject' => 'required',
             'orderer' => 'required',
@@ -33,7 +41,7 @@ class EMR {
                 $patient = Patient::where('identifier',$request->input('subject.identifier'));
 
                 // if patient exists
-                if ($patient) {
+                if ($patient->count()) {
                     $patient = $patient->first();
 
                 }else{
@@ -75,8 +83,8 @@ class EMR {
                     $test = new Test;
                     $test->encounter_id = $encounter->id;
                     $test->identifier = $request->input('subject.identifier');// using patient for now
-                    $test->test_type_id = $request->input('item.code.test_type_id');
-                    $test->test_status_id = TestStatus::PENDING;
+                    $test->test_type_id = $item['test_type_id'];
+                    $test->test_status_id = TestStatus::pending;
                     $test->created_by = Auth::user()->id;
                     $test->requested_by = $request->input('orderer.name');// practitioner
                     $test->save();
@@ -85,7 +93,6 @@ class EMR {
                     $diagnosticOrder->test_id = $test->id;
                     $diagnosticOrder->save();
                 }
-
 
                 return response()->json(['message' => 'Test Request Received']);
             } catch (\Illuminate\Database\QueryException $e) {
@@ -121,8 +128,6 @@ class EMR {
             ],
         ];
 
-
-
         // send results for individual tests for starters
         $promise = $client->requestAsync('POST', env('EMR_RESULT_URL'), [
             'headers' => [
@@ -134,29 +139,16 @@ class EMR {
 
         $promise->then(function (ResponseInterface $response) {
 
-                if ($response->getStatusCode() == 200) {
-                    $diagnosticOrder->diagnostic_order_status_id = DiagnosticOrderStatus::result_sent;
-                    $diagnosticOrder->save();
-                }
-
-                \Log::info($response->getBody()->getContents());
-
-            }, function (RequestException $e) {
-                \Log::info($e->getMessage());
-                \Log::info($e->getRequest()->getMethod());
+            if ($response->getStatusCode() == 200) {
+                $diagnosticOrder->diagnostic_order_status_id = DiagnosticOrderStatus::result_sent;
+                $diagnosticOrder->save();
             }
-        );
+
+            \Log::info($response->getBody()->getContents());
+
+        }, function (RequestException $e) {
+            \Log::info($e->getMessage());
+            \Log::info($e->getRequest()->getMethod());
+        });
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
