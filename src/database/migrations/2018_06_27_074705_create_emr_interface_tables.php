@@ -47,8 +47,6 @@ class CreateEmrInterfaceTables extends Migration
         foreach ($diagnosticOrderStatuses as $diagnosticOrderStatus) {
             DiagnosticOrderStatus::create($diagnosticOrderStatus);
         }
-        echo "diagnostic_order_statuses Seeded\n";
-
     }
 
     /**

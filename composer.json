@@ -1,6 +1,7 @@
 
 {
     "name": "ilabafrica/emrinterface",
+    "description": "EMR Interface",
     "authors": [
         {
             "name": "ereng",
