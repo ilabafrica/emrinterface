@@ -5,10 +5,12 @@ use Auth;
 use App\Models\Name;
 use App\Models\Test;
 use App\Models\Gender;
+use GuzzleHttp\Client;
 use App\Models\Patient;
 use App\Models\TestType;
 use App\Models\Encounter;
 use App\Models\TestStatus;
+use App\Models\MeasureType;
 use Illuminate\Http\Request;
 use App\Models\TestTypeCategory;
 use ILabAfrica\EMRInterface\DiagnosticOrder;
@@ -105,11 +107,37 @@ class EMR {
     {
         $diagnosticOrder = DiagnosticOrder::where('test_id',$testID);
         // if order is from emr
-        if ($diagnosticOrder) {
+        if ($diagnosticOrder->count()) {
             $diagnosticOrder->first();
             $test = Test::find($testID)->load('results');
         }else{
             return;
+        }
+
+        $measures = [];
+        foreach ($test->results as $result) {
+            if ($result->measure->measure_type_id == MeasureType::numeric) {
+                $measures[] = [
+                    'code' => $result->measure->name,
+                    'valueString' => $result->result,
+                ];
+            }else if ($result->measure->measure_type_id == MeasureType::alphanumeric) {
+                $measures[] = [
+                    'code' => $result->measure->name,
+                    'valueString' => $result->measureRange->display,
+                ];
+            }else if ($result->measure->measure_type_id == MeasureType::multi_alphanumeric) {
+                // adjust to capture multiple, will need some looping of measure ranges
+                $measures[] = [
+                    'code' => $result->measure->name,
+                    'valueString' => $result->measureRange->display,
+                ];
+            }else if ($result->measure->measure_type_id == MeasureType::free_text) {
+                $measures[] = [
+                    'code' => $result->measure->name,
+                    'valueString' => $result->result,
+                ];
+            }
         }
 
         $results = [
@@ -124,12 +152,13 @@ class EMR {
                 'effectiveDateTime' => $test->time_completed,
                 'issued' => $test->time_sent, // Date/Time this was made available
                 'performer' => $test->testedBy->name, // Who is responsible for the observation
-                'component' => $test->results
+                'component' => $measures,
             ],
         ];
 
+        $client = new Client();
         // send results for individual tests for starters
-        $promise = $client->requestAsync('POST', env('EMR_RESULT_URL'), [
+        $response = $client->request('POST', env('EMR_RESULT_URL'), [
             'headers' => [
                 'Accept' => 'application/json',
                 'Content-type' => 'application/json'
@@ -137,18 +166,9 @@ class EMR {
             'json' => $results
         ]);
 
-        $promise->then(function (ResponseInterface $response) {
-
-            if ($response->getStatusCode() == 200) {
-                $diagnosticOrder->diagnostic_order_status_id = DiagnosticOrderStatus::result_sent;
-                $diagnosticOrder->save();
-            }
-
-            \Log::info($response->getBody()->getContents());
-
-        }, function (RequestException $e) {
-            \Log::info($e->getMessage());
-            \Log::info($e->getRequest()->getMethod());
-        });
+        if ($response->getStatusCode() == 200) {
+            $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
+        }
+        // toview response \Log::info($response->getBody()->getContents());
     }
 }

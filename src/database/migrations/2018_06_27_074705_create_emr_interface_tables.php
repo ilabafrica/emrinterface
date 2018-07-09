@@ -16,8 +16,7 @@ class CreateEmrInterfaceTables extends Migration
     {
         Schema::create('diagnostic_orders', function (Blueprint $table) {
             $table->increments('id');
-            $table->integer('request_status_id')
-                ->unsigned()
+            $table->integer('diagnostic_order_status_id')->unsigned()
                 ->default(DiagnosticOrderStatus::result_pending);
             $table->integer('test_id')->unsigned();
             $table->timestamps();
@@ -28,7 +27,6 @@ class CreateEmrInterfaceTables extends Migration
             $table->string('code');
             $table->string('display');
         });
-
 
        /* Diagnostic Order Statuses */
         $diagnosticOrderStatuses = [
