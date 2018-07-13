@@ -27,8 +27,9 @@ class EMR {
     }
 
     // receive and add test request on queue
-    public function receiveTestRequest(Request $request, $guard = null)
+    public function receiveTestRequest(Request $request)
     {
+        $guard = env('TPA_API',null);
         $rules = [
             'subject' => 'required',
             'orderer' => 'required',
