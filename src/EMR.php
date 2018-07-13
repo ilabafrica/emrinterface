@@ -27,7 +27,7 @@ class EMR {
     }
 
     // receive and add test request on queue
-    public function receiveTestRequest(Request $request)
+    public function receiveTestRequest(Request $request, $guard = null)
     {
         $rules = [
             'subject' => 'required',
@@ -64,7 +64,7 @@ class EMR {
                     $patient->name_id = $name->id;
                     $patient->gender_id = $gender->id;
                     $patient->birth_date = $request->input('subject.birthDate');
-                    $patient->created_by = Auth::user()->id;
+                    $patient->created_by = Auth::guard($guard)->user()->id;
                     $patient->save();
                 }
 
@@ -87,7 +87,7 @@ class EMR {
                     $test->identifier = $request->input('subject.identifier');// using patient for now
                     $test->test_type_id = $item['test_type_id'];
                     $test->test_status_id = TestStatus::pending;
-                    $test->created_by = Auth::user()->id;
+                    $test->created_by = Auth::guard($guard)->user()->id;
                     $test->requested_by = $request->input('orderer.name');// practitioner
                     $test->save();
 
