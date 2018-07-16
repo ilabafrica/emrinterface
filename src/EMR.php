@@ -170,6 +170,5 @@ class EMR {
         if ($response->getStatusCode() == 200) {
             $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
         }
-        // toview response \Log::info($response->getBody()->getContents());
     }
 }
