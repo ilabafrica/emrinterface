@@ -14,6 +14,7 @@ use App\Models\MeasureType;
 use Illuminate\Http\Request;
 use App\Models\TestTypeCategory;
 use ILabAfrica\EMRInterface\DiagnosticOrder;
+use ILabAfrica\EMRInterface\TestTypeMapping;
 use ILabAfrica\EMRInterface\DiagnosticOrderStatus;
 
 class EMR {
