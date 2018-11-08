@@ -83,11 +83,24 @@ class EMR {
                 // recode each item in DiagnosticOrder to keep track of what has happened to it
                 foreach ($request->input('item') as $item) {
 
+                    // \Log::info($item);
+                    \Log::info(EmrTestTypeAlias::where('emr_alias',$item['test_type_id'])->first());
+                    // decide which etc etc etc
                     // save order items in tests
                     $test = new Test;
                     $test->encounter_id = $encounter->id;
                     $test->identifier = $request->input('subject.identifier');// using patient for now
-                    $test->test_type_id = $item['test_type_id'];
+
+// THIS DOSENT REALLY WORK, USE WHO IS LOGGED IN
+                    if ( env('CLIENT')== 'ML4AFRIKA') {
+                        $test->test_type_id = EmrTestTypeAlias::where('emr_alias',$item['test_type_id'])->first()->test_type_id;
+                    }else{
+// DOSNT WORK CORRECT IT
+                        $test->test_type_id = $item['test_type_id'];
+                    }
+
+                    // use mapping to get this
+                    // \Log::info(EmrTestTypeAlias::all());
                     $test->test_status_id = TestStatus::pending;
                     $test->created_by = Auth::guard($guard)->user()->id;
                     $test->requested_by = $request->input('orderer.name');// practitioner
@@ -169,6 +182,7 @@ class EMR {
         ]);
 
         if ($response->getStatusCode() == 200) {
+\Log::info('result added');
             $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
         }
     }

@@ -4,7 +4,6 @@ namespace ILabAfrica\EMRInterface;
 
 use Illuminate\Database\Eloquent\Model;
 
-class DiagnosticOrder extends Model
-{
-    protected $table = 'test_type_mapping';
+class EmrTestTypeAlias extends Model{
+    protected $table = 'emr_test_type_aliases';
 }

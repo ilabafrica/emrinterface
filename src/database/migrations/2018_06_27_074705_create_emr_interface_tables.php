@@ -14,10 +14,11 @@ class CreateEmrInterfaceTables extends Migration
      */
     public function up()
     {
-        Schema::create('test_type_mapping', function (Blueprint $table) {
+        Schema::create('emr_test_type_aliases', function (Blueprint $table) {
             $table->increments('id');
             $table->integer('client_id')->unsigned();
-            $table->string('data_element_identifier');
+            $table->integer('test_type_id')->unsigned();
+            $table->string('emr_alias');
         });
 
         Schema::create('diagnostic_orders', function (Blueprint $table) {
