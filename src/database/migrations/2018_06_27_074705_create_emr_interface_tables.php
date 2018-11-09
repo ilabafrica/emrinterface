@@ -37,6 +37,13 @@ class CreateEmrInterfaceTables extends Migration
             $table->string('display');
         });
 
+        Schema::create('emrs', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('result_url');
+            $table->uuid('third_party_app_id');
+            $table->boolean('knows_test_menu')->default(1);
+        });
+
        /* Diagnostic Order Statuses */
         $diagnosticOrderStatuses = [
             [

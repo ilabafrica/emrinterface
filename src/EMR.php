@@ -13,11 +13,16 @@ use App\Models\TestStatus;
 use App\Models\MeasureType;
 use Illuminate\Http\Request;
 use App\Models\TestTypeCategory;
+use Illuminate\Database\Eloquent\Model;
 use ILabAfrica\EMRInterface\DiagnosticOrder;
 use ILabAfrica\EMRInterface\TestTypeMapping;
 use ILabAfrica\EMRInterface\DiagnosticOrderStatus;
 
-class EMR {
+class EMR extends Model{
+
+    protected $table = 'emrs';
+
+    public $timestamps = false;
 
     // return test menu
     public function testMenu()
@@ -30,7 +35,6 @@ class EMR {
     // receive and add test request on queue
     public function receiveTestRequest(Request $request)
     {
-        $guard = env('TPA_API',null);
         $rules = [
             'subject' => 'required',
             'orderer' => 'required',
@@ -66,7 +70,7 @@ class EMR {
                     $patient->name_id = $name->id;
                     $patient->gender_id = $gender->id;
                     $patient->birth_date = $request->input('subject.birthDate');
-                    $patient->created_by = Auth::guard($guard)->user()->id;
+                    $patient->created_by = Auth::guard('tpa_api')->user()->id;
                     $patient->save();
                 }
 
@@ -83,26 +87,19 @@ class EMR {
                 // recode each item in DiagnosticOrder to keep track of what has happened to it
                 foreach ($request->input('item') as $item) {
 
-                    // \Log::info($item);
-                    \Log::info(EmrTestTypeAlias::where('emr_alias',$item['test_type_id'])->first());
-                    // decide which etc etc etc
                     // save order items in tests
                     $test = new Test;
                     $test->encounter_id = $encounter->id;
                     $test->identifier = $request->input('subject.identifier');// using patient for now
 
-// THIS DOSENT REALLY WORK, USE WHO IS LOGGED IN
-                    if ( env('CLIENT')== 'ML4AFRIKA') {
-                        $test->test_type_id = EmrTestTypeAlias::where('emr_alias',$item['test_type_id'])->first()->test_type_id;
-                    }else{
-// DOSNT WORK CORRECT IT
+                    if (\ILabAfrica\EMRInterface\EMR::where('third_party_app_id', Auth::guard('tpa_api')->user()->id)->first()->knows_test_menu) {
                         $test->test_type_id = $item['test_type_id'];
+                    }else{
+                        $test->test_type_id = EmrTestTypeAlias::where('emr_alias',$item['test_type_id'])->first()->test_type_id;
                     }
 
-                    // use mapping to get this
-                    // \Log::info(EmrTestTypeAlias::all());
                     $test->test_status_id = TestStatus::pending;
-                    $test->created_by = Auth::guard($guard)->user()->id;
+                    $test->created_by = Auth::guard('tpa_api')->user()->id;
                     $test->requested_by = $request->input('orderer.name');// practitioner
                     $test->save();
 
@@ -173,7 +170,9 @@ class EMR {
 
         $client = new Client();
         // send results for individual tests for starters
-        $response = $client->request('POST', env('EMR_RESULT_URL'), [
+        // dd(Auth::guard('tpa_api')->user()->id);
+
+        $response = $client->request('POST', $test->createdBy->emr->result_url, [
             'headers' => [
                 'Accept' => 'application/json',
                 'Content-type' => 'application/json'
@@ -182,7 +181,6 @@ class EMR {
         ]);
 
         if ($response->getStatusCode() == 200) {
-\Log::info('result added');
             $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
         }
     }
