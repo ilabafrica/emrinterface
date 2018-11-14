@@ -126,53 +126,64 @@ class EMR extends Model{
             return;
         }
 
-        $measures = [];
-        foreach ($test->results as $result) {
-            if ($result->measure->measure_type_id == MeasureType::numeric) {
-                $measures[] = [
-                    'code' => $result->measure->name,
-                    'valueString' => $result->result,
-                ];
-            }else if ($result->measure->measure_type_id == MeasureType::alphanumeric) {
-                $measures[] = [
-                    'code' => $result->measure->name,
-                    'valueString' => $result->measureRange->display,
-                ];
-            }else if ($result->measure->measure_type_id == MeasureType::multi_alphanumeric) {
-                // adjust to capture multiple, will need some looping of measure ranges
-                $measures[] = [
-                    'code' => $result->measure->name,
-                    'valueString' => $result->measureRange->display,
-                ];
-            }else if ($result->measure->measure_type_id == MeasureType::free_text) {
-                $measures[] = [
-                    'code' => $result->measure->name,
-                    'valueString' => $result->result,
-                ];
+
+        if ($test->thirdPartyCreator->emr->data_standard == 'sanitas') {
+
+            // $result = $matchingResult->result." ". $range ." ".$unit;
+            // $formattedMeasures = $measures;
+            $formattedMeasures = '';
+            $jsonResultString = sprintf('{"labNo": "%s","requestingClinician": "%s", "result": "%s", "verifiedby": "%s", "techniciancomment": "%s"}', 
+                                $test->identifier, $test->tested_by, $formattedMeasures, $test->verified_by, $test->comment);
+            $results = "labResult=".urlencode($jsonResultString);
+
+        }elseif($test->thirdPartyCreator->emr->data_standard == 'fhir'){
+            $measures = [];
+            foreach ($test->results as $result) {
+                if ($result->measure->measure_type_id == MeasureType::numeric) {
+                    $measures[] = [
+                        'code' => $result->measure->name,
+                        'valueString' => $result->result,
+                    ];
+                }else if ($result->measure->measure_type_id == MeasureType::alphanumeric) {
+                    $measures[] = [
+                        'code' => $result->measure->name,
+                        'valueString' => $result->measureRange->display,
+                    ];
+                }else if ($result->measure->measure_type_id == MeasureType::multi_alphanumeric) {
+                    // adjust to capture multiple, will need some looping of measure ranges
+                    $measures[] = [
+                        'code' => $result->measure->name,
+                        'valueString' => $result->measureRange->display,
+                    ];
+                }else if ($result->measure->measure_type_id == MeasureType::free_text) {
+                    $measures[] = [
+                        'code' => $result->measure->name,
+                        'valueString' => $result->result,
+                    ];
+                }
             }
+            $results = [
+                'resourceType' => 'DiagnosticReport',
+                'identifier' => $test->encounter->patient->identifier, // emr patient Identifier
+                'subject' => [
+                    'identifier' => $test->encounter->patient->identifier, // emr patient Identifier
+                ], // R!  The subject of the report, usually, but not always, the patient
+                'result' => [ // Observations - simple, or complex nested groups
+                    'resourceType' => 'Observation',
+                    'identifier' => $test->id, // emr test Identifier, say using loinc... for us to aggre
+                    'effectiveDateTime' => $test->time_completed,
+                    'issued' => $test->time_sent, // Date/Time this was made available
+                    'performer' => $test->testedBy->name, // Who is responsible for the observation
+                    'component' => $measures,
+                ],
+            ];
         }
 
-        $results = [
-            'resourceType' => 'DiagnosticReport',
-            'identifier' => $test->encounter->patient->identifier, // emr patient Identifier
-            'subject' => [
-                'identifier' => $test->encounter->patient->identifier, // emr patient Identifier
-            ], // R!  The subject of the report, usually, but not always, the patient
-            'result' => [ // Observations - simple, or complex nested groups
-                'resourceType' => 'Observation',
-                'identifier' => $test->id, // emr test Identifier, say using loinc... for us to aggre
-                'effectiveDateTime' => $test->time_completed,
-                'issued' => $test->time_sent, // Date/Time this was made available
-                'performer' => $test->testedBy->name, // Who is responsible for the observation
-                'component' => $measures,
-            ],
-        ];
 
         $client = new Client();
-        // send results for individual tests for starters
-        // dd(Auth::guard('tpa_api')->user()->id);
 
-        $response = $client->request('POST', $test->createdBy->emr->result_url, [
+        // send results for individual tests
+        $response = $client->request('POST', $test->thirdPartyCreator->emr->result_url, [
             'headers' => [
                 'Accept' => 'application/json',
                 'Content-type' => 'application/json'

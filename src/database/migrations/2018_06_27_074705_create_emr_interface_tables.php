@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
-use ILabAfrica\EMRInterface\DiagnosticOrderStatus;
 use Illuminate\Database\Migrations\Migration;
+use \ILabAfrica\EMRInterface\DiagnosticOrderStatus;
 
 class CreateEmrInterfaceTables extends Migration
 {
@@ -41,6 +41,7 @@ class CreateEmrInterfaceTables extends Migration
             $table->increments('id');
             $table->string('result_url');
             $table->uuid('third_party_app_id');
+            $table->string('data_standard');// fhir, sanitas
             $table->boolean('knows_test_menu')->default(1);
         });
 
@@ -57,7 +58,6 @@ class CreateEmrInterfaceTables extends Migration
                 'display' => 'Result Sent'
             ],
         ];
-
         foreach ($diagnosticOrderStatuses as $diagnosticOrderStatus) {
             DiagnosticOrderStatus::create($diagnosticOrderStatus);
         }
