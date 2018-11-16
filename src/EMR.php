@@ -36,36 +36,48 @@ class EMR extends Model{
     // receive and add test request on queue
     public function receiveTestRequest(Request $request)
     {
-        $rules = [
-            'subject' => 'required',
-            'orderer' => 'required',
-            'item' => 'required',
-        ];
+        if (Auth::guard('tpa_api')->user()->emr->data_standard == 'sanitas') {
+            $rules = [
+                'patient' => 'required',
+            ];
+
+        }else{
+            $rules = [
+                'subject' => 'required',
+                'orderer' => 'required',
+                'item' => 'required',
+            ];
+        }
+
         $validator = \Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return response()->json($validator);
         } else {
             try {
-
+\Log::info($request->all());
                 if (Auth::guard('tpa_api')->user()->emr->data_standard == 'sanitas') {
                     $gender = ['Male' => Gender::male, 'Female' => Gender::female];
 
+                    $name = new Name;
+                    $name->text = $request->input('patient.fullName');
+                    $name->save();
+
                     //Check if patient exists, if true dont save again
                     $patient = Patient::firstOrNew([
-                        'identifier' => $labRequest->patient->id,
+                        'identifier' => $request->input('patient.id'),
                     ]);
-                    $patient->patient_number = $labRequest->patient->id;
-                    $patient->name = $labRequest->patient->fullName;
-                    $patient->gender_id = $gender[$labRequest->patient->gender];
-                    $patient->dob = $labRequest->patient->dateOfBirth;
-                    $patient->address = $labRequest->address->address;
-                    $patient->phone_number = $labRequest->address->phoneNumber;
-                    $patient->created_by = Auth::guard('tpa_api')->user()->id
+                    $patient->identifier = $request->input('patient.id');
+                    $patient->name_id = $name->id;
+                    $patient->gender_id = $gender[$request->input('patient.gender')];
+                    $patient->birth_date = $request->input('patient.dateOfBirth');
+                    $patient->address = $request->input('address.address');
+                    // $patient->phone_number = $request->input('address.phoneNumber');
+                    $patient->created_by = Auth::guard('tpa_api')->user()->id;
                     $patient->save();
 
                     try
                     {
-                        $testName = trim($labRequest->investigation);
+                        $testName = trim($request->input('investigation'));
                         $testTypeId = TestType::where('name', 'like', $testName)->orderBy('name')->firstOrFail()->id;
                     } catch (ModelNotFoundException $e) {
                         Log::error("The test type ` $testName ` does not exist:  ". $e->getMessage());
@@ -77,23 +89,22 @@ class EMR extends Model{
 
                     //Check if visit exists, if true dont save again
                     $encounter = Encounter::firstOrNew([
-                        'identifier' => $labRequest->patientVisitNumber,
-                        'encounter_class_id' => $visitType[$labRequest->orderStage],
+                        'identifier' => $request->input('patientVisitNumber'),
+                        'encounter_class_id' => $visitType[$request->input('orderStage')],
                         'patient_id' => $patient->id,
                     ]);
 
                     //Check if parentLabNO is 0 thus its the main test and not a measure
-                    if($labRequest->parentLabNo == '0' || $this->isPanelTest($labRequest))
-                    {
+                    // if($request->input('parentLabNo') == '0' || $this->isPanelTest($request->input('parentLabNo'))
+                    // {
                         //Check via the labno, if this is a duplicate request and we already saved the test
                         $test = Test::firstOrNew([
-                            'external_id' => $labRequest->labNo,
+                            'identifier' => $request->input('labNo'),
                         ]);
                         $test->test_type_id = $testTypeId;
                         $test->test_status_id = TestStatus::pending;
-                        $test->created_by = Auth::guard('tpa_api')->user()->id
-                        //Created by external system 0
-                        $test->requested_by = $labRequest->requestingClinician;
+                        $test->created_by = Auth::guard('tpa_api')->user()->id;
+                        $test->requested_by = $request->input('requestingClinician');
 
                         \DB::transaction(function() use ($encounter, $test) {
                             $encounter->save();
@@ -101,7 +112,7 @@ class EMR extends Model{
                             $test->specimen_id = $specimen->id;
                             $test->save();
                         });
-                    }
+                    // }
                 }else{
                     $patient = Patient::where('identifier',$request->input('subject.identifier'));
 
@@ -136,7 +147,7 @@ class EMR extends Model{
                     $encounter->location_id = $request->input('location_id');
                     $encounter->practitioner_name = $request->input('orderer.name');
                     $encounter->practitioner_contact = $request->input('orderer.contact');
-                    $encounter->encounter_class_id = $visitType[$labRequest->orderStage];
+                    $encounter->encounter_class_id = $visitType[$request->orderStage];
                     $encounter->practitioner_organisation = $request->input('orderer.organisation');
                     $encounter->save();
 
@@ -254,24 +265,6 @@ class EMR extends Model{
 
         if ($response->getStatusCode() == 200) {
             $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
-        }
-    }
-
-    // used by sanitas
-    public function isPanelTest($labRequest)
-    {
-        //If parent is panel test
-        if($labRequest->parentLabNo != '0'){
-            $parent = ExternalDump::where('lab_no', $labRequest->parentLabNo)->first();
-            $panel = Panel::where('name', 'like', trim($parent->investigation))->where('active', 1)->orderBy('name')->first();
-            if (isset($panel)) {
-                //If is one of the child test of panel
-                foreach ($panel->testTypes as $testType) {
-                    if($testType->name == $labRequest->investigation) {
-                        return true;
-                    }
-                }
-            }
         }
     }
 }
