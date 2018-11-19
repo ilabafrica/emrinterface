@@ -54,7 +54,6 @@ class EMR extends Model{
             return response()->json($validator);
         } else {
             try {
-\Log::info($request->all());
                 if (Auth::guard('tpa_api')->user()->emr->data_standard == 'sanitas') {
                     $gender = ['Male' => Gender::male, 'Female' => Gender::female];
 
@@ -85,7 +84,7 @@ class EMR extends Model{
                         return null;
                     }
 
-                    $visitType = ['ip' => 'In-patient', 'op' => 'Out-patient'];//Should be a constant
+                    $visitType = ['ip' => EncounterClass::inpatient, 'op' => EncounterClass::outpatient];
 
                     //Check if visit exists, if true dont save again
                     $encounter = Encounter::firstOrNew([
@@ -109,7 +108,6 @@ class EMR extends Model{
                         \DB::transaction(function() use ($encounter, $test) {
                             $encounter->save();
                             $test->visit_id = $encounter->id;
-                            $test->specimen_id = $specimen->id;
                             $test->save();
                         });
                     // }
@@ -138,7 +136,7 @@ class EMR extends Model{
                         $patient->created_by = Auth::guard('tpa_api')->user()->id;
                         $patient->save();
                     }
-                    $visitType = ['ip' => EncounterClass::inpatient, 'op' => EncounterClass::outpatient];
+                    $encounterClass = ['inpatient' => EncounterClass::inpatient, 'outpatient' => EncounterClass::outpatient];
 
                     // on the lab side, assuming each set of requests represent an encounter
                     $encounter = new Encounter;
@@ -147,7 +145,7 @@ class EMR extends Model{
                     $encounter->location_id = $request->input('location_id');
                     $encounter->practitioner_name = $request->input('orderer.name');
                     $encounter->practitioner_contact = $request->input('orderer.contact');
-                    $encounter->encounter_class_id = $visitType[$request->orderStage];
+                    $encounter->encounter_class_id = $encounterClass[$request->input('encounter.class')];
                     $encounter->practitioner_organisation = $request->input('orderer.organisation');
                     $encounter->save();
 
