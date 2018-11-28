@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
 use ILabAfrica\EMRInterface\DiagnosticOrder;
 use ILabAfrica\EMRInterface\TestTypeMapping;
 use ILabAfrica\EMRInterface\DiagnosticOrderStatus;
+use GuzzleHttp\Exception\ClientException;
+
 
 class EMR extends Model{
 
@@ -93,10 +95,6 @@ class EMR extends Model{
                         'patient_id' => $patient->id,
                     ]);
 
-                    //Check if parentLabNO is 0 thus its the main test and not a measure
-                    // if($request->input('parentLabNo') == '0' || $this->isPanelTest($request->input('parentLabNo'))
-                    // {
-                        //Check via the labno, if this is a duplicate request and we already saved the test
                         $test = Test::firstOrNew([
                             'identifier' => $request->input('labNo'),
                         ]);
@@ -110,7 +108,6 @@ class EMR extends Model{
                             $test->visit_id = $encounter->id;
                             $test->save();
                         });
-                    // }
                 }else{
                     $patient = Patient::where('identifier',$request->input('subject.identifier'));
 
@@ -181,22 +178,52 @@ class EMR extends Model{
         }
     }
 
+    public function getToken($testID, $thirdPartyEmail)
+    {
+        $clientLogin = new Client();
+        // send results for individual tests for starters
+        $loginResponse = $clientLogin->request('POST', 'http://play.test/api/tpa/login', [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Content-type' => 'application/json'
+            ],
+            'json' => [
+                'email' => $thirdPartyEmail,
+                'password' => 'password'
+             ],
+        ]);
+
+       if ($loginResponse->getStatusCode() == 200) {
+            \Log::info('login success');
+            $accessToken = json_decode($loginResponse->getBody()->getContents())->access_token;
+            \App\Models\ThirdPartyAccess::where('email',$thirdPartyEmail)->update(['access_token' => $accessToken]);
+
+            $this->sendTestResults($testID);
+        }
+    }
+
     public function sendTestResults($testID)
     {
         $diagnosticOrder = DiagnosticOrder::where('test_id',$testID);
+
         // if order is from emr
         if ($diagnosticOrder->count()) {
             $diagnosticOrder->first();
             $test = Test::find($testID)->load('results');
+            \Log::info($test->thirdPartyCreator->access);
+
+            $thirdPartyAccess = \App\Models\ThirdPartyAccess::where('email',$test->thirdPartyCreator->access->email);
+            if ($thirdPartyAccess->count()) {
+                $accessToken = $thirdPartyAccess->first()->access_token;
+            }else{
+                $accessToken = '';
+            }
         }else{
             return;
         }
 
         if ($test->thirdPartyCreator->emr->data_standard == 'sanitas') {
 
-            // $result = $matchingResult->result." ". $range ." ".$unit;
-            // $formattedMeasures = $measures;
-            // $formattedMeasures = '';
             $result = '';
             $jsonResultString = sprintf('{"labNo": "%s","requestingClinician": "%s", "result": "%s", "verifiedby": "%s", "techniciancomment": "%s"}', 
                                 $test->identifier, $test->tested_by, $result, $test->verified_by, $test->comment);
@@ -251,16 +278,20 @@ class EMR extends Model{
         if ($test->thirdPartyCreator->emr->data_standard == 'sanitas') {
             $response = $client->request('GET', $test->thirdPartyCreator->emr->result_url.'?'.$results, ['debug' => true]);
         }else{
-            // send results for individual tests
-            $response = $client->request('POST', $test->thirdPartyCreator->emr->result_url, [
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Content-type' => 'application/json'
-                ],
-                'json' => $results
-            ]);
+            try {
+                // send results for individual tests
+                $response = $client->request('POST', $test->thirdPartyCreator->emr->result_url, [
+                    'headers' => [
+                        'Accept' => 'application/json',
+                        'Content-type' => 'application/json',
+                        'Authorization' => 'Bearer '.$accessToken
+                    ],
+                    'json' => $results
+                ]);
+            } catch (\GuzzleHttp\Exception\ClientException $e) {
+                $this->getToken($test->id, $test->thirdPartyCreator->access->email);
+            }
         }
-
         if ($response->getStatusCode() == 200) {
             $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
         }

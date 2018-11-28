@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
             'password' =>  bcrypt('password'),
         ])->id;
 
-        $sanitas = \App\ThirdPartyApp::create([
+        $sanitasId = \App\ThirdPartyApp::create([
             'id' => (string) Str::uuid(),
             'name' => 'Sanitas',
             'email' => 'sanitas@emr.dev',
@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
 
         // default
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => 'http://play.local/api/medbookresult',
+            'result_url' => 'http://play.test/api/medbookresult',
             'third_party_app_id' => $defaultId,
             'data_standard' => 'fhir',
             'knows_test_menu' => 1,
@@ -44,7 +44,7 @@ class DatabaseSeeder extends Seeder
 
         // ml4afrika
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => 'http://play.local/api/ml4afrikaresult',
+            'result_url' => 'http://play.test/api/ml4afrikaresult',
             'third_party_app_id' => $mL4AfrikaId,
             'data_standard' => 'fhir',
             'knows_test_menu' => 0,
@@ -52,10 +52,29 @@ class DatabaseSeeder extends Seeder
 
         // sanitas
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => 'http://play.local/api/sanitasresult',
-            'third_party_app_id' => $sanitas,
+            'result_url' => 'http://play.test/api/sanitasresult',
+            'third_party_app_id' => $sanitasId,
             'data_standard' => 'sanitas',
             'knows_test_menu' => 1,
         ]);
+
+        \App\Models\ThirdPartyAccess::create([
+            'third_party_app_id' => $defaultId,
+            'email' => 'medbook@play.dev',
+            'password' =>  'password',
+        ]);
+
+        \App\Models\ThirdPartyAccess::create([
+            'third_party_app_id' => $mL4AfrikaId,
+            'email' => 'ml4afrika@play.dev',
+            'password' =>  'password',
+        ]);
+
+        \App\Models\ThirdPartyAccess::create([
+            'third_party_app_id' => $sanitasId,
+            'email' => 'sanitas@play.dev',
+            'password' =>  'password',
+        ]);
+
     }
 }
