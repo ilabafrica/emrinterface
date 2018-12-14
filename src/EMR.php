@@ -38,6 +38,7 @@ class EMR extends Model{
     // receive and add test request on queue
     public function receiveTestRequest(Request $request)
     {
+        \Log::info($request);
         if (Auth::guard('tpa_api')->user()->emr->data_standard == 'sanitas') {
             $rules = [
                 'patient' => 'required',
@@ -45,16 +46,20 @@ class EMR extends Model{
 
         }else{
             $rules = [
+                'contained' => 'required',
+                'extension' => 'required',
+                'code' => 'required',
                 'subject' => 'required',
-                'orderer' => 'required',
-                'item' => 'required',
+                'requester' => 'required',
+                 'item' => 'required',
             ];
         }
 
         $validator = \Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            return response()->json($validator);
+            \Log::info(response()->json($validator->errors()));
         } else {
+            \Log::info("Hety");
             try {
                 if (Auth::guard('tpa_api')->user()->emr->data_standard == 'sanitas') {
                     $gender = ['Male' => Gender::male, 'Female' => Gender::female];
@@ -108,7 +113,76 @@ class EMR extends Model{
                             $test->visit_id = $encounter->id;
                             $test->save();
                         });
-                }else{
+                }else if (Auth::guard('tpa_api')->user()->emr->data_standard == 'fhir') {
+                    $contained =$request->input('contained');
+                    $patient = Patient::where('identifier',$contained[0]['identifier']);
+
+                    // male | female | other | unknown
+                    $gender = ['male' => Gender::male, 'female' => Gender::female]; 
+
+                    // if patient exists
+                    if ($patient->count()) {
+                        $patient = $patient->first();
+
+                    }else{
+                        \Log::info( $contained);
+                        // create patient entry
+                        $name = new Name;
+                        $name->family = $contained[0]['name'][0]['family'];
+                        $name->given = $contained[0]['name'][0]['given'][0];
+                        $name->text =$name->given." ".$name->family;
+                        $name->save();
+
+                        \Log::info($name);
+
+                        // save subject in patient
+                        $patient = new Patient;
+                        $patient->identifier = $contained[0]['identifier'][0]['value'];
+                        $patient->name_id = $name->id;
+                        $patient->gender_id = $gender[$contained[0]['gender']];
+                        $patient->birth_date = $contained[0]['birthDate'];
+                        $patient->created_by = Auth::guard('tpa_api')->user()->id;
+                        $patient->save();
+                    }
+                    $encounterClass = ['inpatient' => EncounterClass::inpatient, 'outpatient' => EncounterClass::outpatient];
+
+                    // on the lab side, assuming each set of requests represent an encounter
+                      $requester =$request->input('requester');
+                    $encounter = new Encounter;
+                    $encounter->identifier =$contained[0]['identifier'][0]['value'];
+                    $encounter->patient_id = $patient->id;
+                    $encounter->location_id = $request->input('location_id');
+                    $encounter->practitioner_name = $requester['agent']['name'];
+                    $encounter->practitioner_contact = $requester['agent']['contact'];
+                
+                    $encounter->practitioner_organisation = $requester['agent']['organization'];
+                    $encounter->save();
+
+                    // recode each item in DiagnosticOrder to keep track of what has happened to it
+                    foreach ($request->input('item') as $item) {
+
+                        // save order items in tests
+                        $test = new Test;
+                        $test->encounter_id = $encounter->id;
+                        $test->identifier = $contained[0]['identifier'][0]['value'];// using patient for now
+
+                        if (\ILabAfrica\EMRInterface\EMR::where('third_party_app_id', Auth::guard('tpa_api')->user()->id)->first()->knows_test_menu) {
+                            $test->test_type_id = $item['test_type_id'];
+                        }else{
+                            $test->test_type_id = EmrTestTypeAlias::where('emr_alias',$item['test_type_id'])->first()->test_type_id;
+                        }
+
+                        $test->test_status_id = TestStatus::pending;
+                        $test->created_by = Auth::guard('tpa_api')->user()->id;
+                        $test->requested_by = $requester['agent']['name'];// practitioner
+                        $test->save();
+
+                        $diagnosticOrder = new DiagnosticOrder;
+                        $diagnosticOrder->test_id = $test->id;
+                        $diagnosticOrder->save();
+                    }
+                }
+                else{
                     $patient = Patient::where('identifier',$request->input('subject.identifier'));
 
                     // male | female | other | unknown
@@ -256,19 +330,114 @@ class EMR extends Model{
                 }
             }
             $results = [
-                'resourceType' => 'DiagnosticReport',
-                'identifier' => $test->encounter->patient->identifier, // emr patient Identifier
-                'subject' => [
-                    'identifier' => $test->encounter->patient->identifier, // emr patient Identifier
-                ], // R!  The subject of the report, usually, but not always, the patient
-                'result' => [ // Observations - simple, or complex nested groups
-                    'resourceType' => 'Observation',
-                    'identifier' => $test->id, // emr test Identifier, say using loinc... for us to aggre
-                    'effectiveDateTime' => $test->time_completed,
-                    'issued' => $test->time_sent, // Date/Time this was made available
-                    'performer' => $test->testedBy->name, // Who is responsible for the observation
-                    'component' => $measures,
+                 "resourceType"=> "DiagnosticReport",
+                 "contained"=> [
+            [    
+                  "resourceType"=> "Observation",
+                  "id"=> $test->encounter->patient->identifier,
+            "extension"=> [
+            [       
+
+                  "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                  "valueCode"=> "hbCodeExample"
+            ]
+            ],
+            "code"=> 
+            [               
+            "coding"=> [
+            [  
+
+                "system"=> "http=>//loinc.org",
+                "code"=> "718-7",
+                "display"=> "Hemoglobin [Mass/volume] in Blood"
+            ]
+            ]
+            ],
+ 
+                "effectiveDateTime"=> $test->time_completed,
+                "performer"=> [
+            [                    
+                "reference"=> $test->testedBy->name,
+            ]
+            ],
+            "valueQuantity"=> [  
+                "value"=> $measures,
+                "unit"=> "g/dl",
+                "system"=> "http=>//unitsofmeasure.org",
+                "code"=> "g/dL"
+            ]
+           ],
+        
+           [   
+
+            "resourceType"=> "Observation",
+            "id"=> $test->encounter->patient->identifier,
+            "extension"=> [
+           [                   
+                "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                "valueCode"=> "rhCodeExample"
+           ]
+           ],
+            "code"=> [                
+            "coding"=> [
+           [    
+                "system"=> "http=>//loinc.org",
+                "code"=> "883-9",
+                "display"=> "ABO group [Type] in Blood"
+           ]
+           ]
+           ],
+               "effectiveDateTime"=> $test->time_completed,
+               "performer"=> [
+
+                [    
+
+                "reference"=> $test->testedBy->name
+            ]
+            ],
+               "valueCodeableConcept"=> [            
+               "coding"=> [
+                    [   
+
+                "system"=> "http=>//snomed.info/sct",
+                "code"=> "112144000",
+                "display"=> "Blood group A (finding)"
+                   ]
                 ],
+                "text"=> "A"
+            ]
+            ]
+            ],
+            "extension"=> [
+            [   
+
+                "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/eventId",
+                "valueString"=> "exampleEventId"
+            ]
+            ],
+            "identifier"=> [
+            [            
+
+                "value"=> $test->id
+            ]
+            ],
+            "subject"=> [        
+
+                "reference"=>  $test->encounter->patient->identifier
+            ],
+            "performer"=> [
+            [   "actor"=> [               
+
+                "reference"=> $test->testedBy->name
+            ]
+            ]
+            ],
+            "result"=> [
+            [     "reference"=> "#Observation1"
+            ],
+            [     "reference"=> "#Observation2"
+            ]
+            ]
             ];
         }
 
