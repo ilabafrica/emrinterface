@@ -256,7 +256,7 @@ class EMR extends Model{
     {
         $clientLogin = new Client();
         // send results for individual tests for starters
-        $loginResponse = $clientLogin->request('POST', 'http://play.test/api/tpa/login', [
+        $loginResponse = $clientLogin->request('POST', env('LOGIN_URL_ML4AFRIKA', 'http://play.test/api/tpa/login'), [
             'headers' => [
                 'Accept' => 'application/json',
                 'Content-type' => 'application/json'
