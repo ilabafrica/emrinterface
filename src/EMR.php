@@ -147,7 +147,7 @@ class EMR extends Model{
                     $encounterClass = ['inpatient' => EncounterClass::inpatient, 'outpatient' => EncounterClass::outpatient];
 
                     // on the lab side, assuming each set of requests represent an encounter
-                      $requester =$request->input('requester');
+                    $requester =$request->input('requester');
                     $encounter = new Encounter;
                     $encounter->identifier =$contained[0]['identifier'][0]['value'];
                     $encounter->patient_id = $patient->id;
@@ -330,114 +330,105 @@ class EMR extends Model{
                 }
             }
             $results = [
-                 "resourceType"=> "DiagnosticReport",
-                 "contained"=> [
-            [    
+              "resourceType"=> "DiagnosticReport",
+              "contained"=> [
+                [
                   "resourceType"=> "Observation",
                   "id"=> $test->encounter->patient->identifier,
-            "extension"=> [
-            [       
-
-                  "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                  "valueCode"=> "hbCodeExample"
-            ]
-            ],
-            "code"=> 
-            [               
-            "coding"=> [
-            [  
-
-                "system"=> "http=>//loinc.org",
-                "code"=> "718-7",
-                "display"=> "Hemoglobin [Mass/volume] in Blood"
-            ]
-            ]
-            ],
- 
+                  "extension"=> [
+                    [
+                      "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                      "valueCode"=> "hbCodeExample"
+                    ]
+                ],
+                "code"=> [
+                  "coding"=> [
+                    [
+                      "system"=> "http=>//loinc.org",
+                      "code"=> "718-7",
+                      "display"=> "Hemoglobin [Mass/volume] in Blood"
+                    ]
+                  ]
+                ],
                 "effectiveDateTime"=> $test->time_completed,
                 "performer"=> [
-            [                    
-                "reference"=> $test->testedBy->name,
-            ]
-            ],
-            "valueQuantity"=> [  
-                "value"=> $measures,
-                "unit"=> "g/dl",
-                "system"=> "http=>//unitsofmeasure.org",
-                "code"=> "g/dL"
-            ]
-           ],
-        
-           [   
-
-            "resourceType"=> "Observation",
-            "id"=> $test->encounter->patient->identifier,
-            "extension"=> [
-           [                   
-                "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                "valueCode"=> "rhCodeExample"
-           ]
-           ],
-            "code"=> [                
-            "coding"=> [
-           [    
-                "system"=> "http=>//loinc.org",
-                "code"=> "883-9",
-                "display"=> "ABO group [Type] in Blood"
-           ]
-           ]
-           ],
-               "effectiveDateTime"=> $test->time_completed,
-               "performer"=> [
-
-                [    
-
-                "reference"=> $test->testedBy->name
-            ]
-            ],
-               "valueCodeableConcept"=> [            
-               "coding"=> [
-                    [   
-
-                "system"=> "http=>//snomed.info/sct",
-                "code"=> "112144000",
-                "display"=> "Blood group A (finding)"
-                   ]
+                  [
+                    "reference"=> $test->testedBy->name,
+                  ]
                 ],
-                "text"=> "A"
-            ]
-            ]
-            ],
-            "extension"=> [
-            [   
+                  "valueQuantity"=> [
+                    "value"=> $measures,
+                    "unit"=> "g/dl",
+                    "system"=> "http=>//unitsofmeasure.org",
+                    "code"=> "g/dL"
+                  ]
+               ],
+               [
 
-                "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/eventId",
-                "valueString"=> "exampleEventId"
-            ]
-            ],
-            "identifier"=> [
-            [            
-
-                "value"=> $test->id
-            ]
-            ],
-            "subject"=> [        
-
-                "reference"=>  $test->encounter->patient->identifier
-            ],
-            "performer"=> [
-            [   "actor"=> [               
-
-                "reference"=> $test->testedBy->name
-            ]
-            ]
-            ],
-            "result"=> [
-            [     "reference"=> "#Observation1"
-            ],
-            [     "reference"=> "#Observation2"
-            ]
-            ]
+                  "resourceType"=> "Observation",
+                  "id"=> $test->encounter->patient->identifier,
+                  "extension"=> [
+                    [
+                      "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                      "valueCode"=> "rhCodeExample"
+                    ]
+                  ],
+                  "code"=> [
+                    "coding"=> [
+                      [
+                        "system"=> "http=>//loinc.org",
+                        "code"=> "883-9",
+                        "display"=> "ABO group [Type] in Blood"
+                      ]
+                    ]
+                  ],
+                  "effectiveDateTime"=> $test->time_completed,
+                  "performer"=> [
+                    [
+                      "reference"=> $test->testedBy->name
+                    ]
+                  ],
+                  "valueCodeableConcept"=> [
+                  "coding"=> [
+                    [
+                      "system"=> "http=>//snomed.info/sct",
+                      "code"=> "112144000",
+                      "display"=> "Blood group A (finding)"
+                    ]
+                  ],
+                  "text"=> "A"
+                  ]
+                ]
+              ],
+              "extension"=> [
+                [
+                  "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/eventId",
+                  "valueString"=> "exampleEventId"
+                ]
+              ],
+              "identifier"=> [
+                [
+                  "value"=> $test->id
+                ]
+              ],
+              "subject"=> [
+                  "reference"=>  $test->encounter->patient->identifier
+              ],
+              "performer"=> [
+                [
+                  "actor"=> [
+                    "reference"=> $test->testedBy->name
+                  ]
+                ]
+              ],
+              "result"=> [
+                [
+                  "reference"=> "#Observation1"
+                ],
+                [
+                  "reference"=> "#Observation2"
+                ]
+              ]
             ];
         }
 

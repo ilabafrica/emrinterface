@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
 
         // default
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => 'http://play.test/api/medbookresult',
+            'result_url' => env('RESULT_URL_DEFAULT','http://play.test/api/medbookresult'),
             'third_party_app_id' => $defaultId,
             'data_standard' => 'fhir',
             'knows_test_menu' => 1,
@@ -44,7 +44,7 @@ class DatabaseSeeder extends Seeder
 
         // ml4afrika
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => 'http://play.test/api/ml4afrikaresult',
+            'result_url' => env('RESULT_URL_ML4AFRIKA','http://play.test/api/ml4afrikaresult'),
             'third_party_app_id' => $mL4AfrikaId,
             'data_standard' => 'fhir',
             'knows_test_menu' => 0,
@@ -52,7 +52,7 @@ class DatabaseSeeder extends Seeder
 
         // sanitas
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => 'http://play.test/api/sanitasresult',
+            'result_url' => env('RESULT_URL_SANITAS','http://play.test/api/sanitasresult'),
             'third_party_app_id' => $sanitasId,
             'data_standard' => 'sanitas',
             'knows_test_menu' => 1,
