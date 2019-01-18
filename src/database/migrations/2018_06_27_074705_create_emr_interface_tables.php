@@ -26,7 +26,7 @@ class CreateEmrInterfaceTables extends Migration
             $table->integer('diagnostic_order_status_id')->unsigned()
                 ->default(DiagnosticOrderStatus::result_pending);
             $table->integer('test_id')->unsigned();
-            $table->integer('test_type_mapping_id')->unsigned()->nullable();
+            $table->integer('emr_test_type_alias_id')->unsigned()->nullable();
             $table->timestamp('time_sent')->nullable();
             $table->timestamps();
         });
@@ -43,6 +43,13 @@ class CreateEmrInterfaceTables extends Migration
             $table->uuid('third_party_app_id');
             $table->string('data_standard');// fhir, sanitas
             $table->boolean('knows_test_menu')->default(1);
+        });
+
+        // result auto gen additional information/non test type aliase
+        Schema::create('emr_additional_infos', function (Blueprint $table) {
+            $table->increments('id');
+            $table->integer('emr_test_type_alias_id')->unsigned();
+            $table->string('type',20);//date,number,details,requested
         });
 
        /* Diagnostic Order Statuses */
