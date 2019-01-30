@@ -485,7 +485,14 @@ class EMR extends Model{
                 ]);
             } catch (\GuzzleHttp\Exception\ClientException $e) {
                 \Log::info($e->getMessage());
-                $this->getToken($test->id, $test->thirdPartyCreator->access->email);
+                DiagnosticOrder::where('test_id',$testID)->update(['result_sent_attempts' => $diagnosticOrder->result_sent_attempts+1]);
+
+                // if attempts are still less than 3
+                if (DiagnosticOrder::where('test_id',$testID)->first()->result_sent_attempts<5) {
+                    $this->getToken($test->id, $test->thirdPartyCreator->access->email);
+                }else{
+                    \Log::info('\'result sent attempt\' exhausted');
+                }
             }
         }
         if ($response->getStatusCode() == 200) {
