@@ -26,7 +26,7 @@ class CreateEmrInterfaceTables extends Migration
             $table->integer('diagnostic_order_status_id')->unsigned()
                 ->default(DiagnosticOrderStatus::result_pending);
             $table->integer('test_id')->unsigned();
-            $table->integer('emr_test_type_alias_id')->unsigned()->nullable();
+            $table->integer('emr_test_type_alias_id')->unsigned();
             $table->timestamp('time_sent')->nullable();
             $table->timestamps();
         });

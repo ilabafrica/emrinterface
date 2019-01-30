@@ -170,6 +170,7 @@ class EMR extends Model{
 
                         $diagnosticOrder = new DiagnosticOrder;
                         $diagnosticOrder->test_id = $test->id;
+                        $diagnosticOrder->emr_test_type_alias_id = EmrTestTypeAlias::where('emr_alias',$coding['code'])->first()->id;
                         $diagnosticOrder->save();
                     }
                 }
@@ -272,7 +273,8 @@ class EMR extends Model{
 
         // if order is from emr
         if ($diagnosticOrder->count()) {
-            $diagnosticOrder->first();
+
+            $diagnosticOrder = $diagnosticOrder->first();
             $test = Test::find($testID)->load('results');
 
             $thirdPartyAccess = \App\Models\ThirdPartyAccess::where('email',$test->thirdPartyCreator->access->email);
@@ -295,30 +297,34 @@ class EMR extends Model{
         }elseif($test->thirdPartyCreator->emr->data_standard == 'fhir'){
             $contained = [];
             $resultRreference = [];
-            foreach ($test->results as $result) {
-                $resultRreference[] = ["reference" => "#observation".$result->id];
 
+            foreach ($test->results as $result) {
+
+                $resultRreference = ["reference" => "#observation".$result->id];
+
+                $emrAlias = EmrTestTypeAlias::find($diagnosticOrder->emr_test_type_alias_id)->emr_alias;
                 if ($result->measure->measure_type_id == MeasureType::numeric) {
 
                     $contained[] = [
                       "resourceType"=> "Observation",
-                      "id"=> "observation".$result->id,//todo: check for identification of tests if such a thing exists
+                      "id"=> "observation".$result->id,
                       "extension"=> [
                         [
-                          "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $test->testType->alias,
+                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                          "valueCode"=> $emrAlias,
                         ]
                       ],
+                      "status" => "final",
                       "code"=> [
                         "coding"=> [
                           [
-                            "system"=> "http=>//loinc.org",
+                            "system"=> "http://loinc.org",
                             "code"=> "",//todo: update loinc code
                             "display"=> ""//todo: update loinc display
                           ]
                         ]
                       ],
-                      "effectiveDateTime"=> $test->time_completed,
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
                       "performer"=> [
                         [
                           "reference"=> $test->testedBy->name,
@@ -327,7 +333,7 @@ class EMR extends Model{
                       "valueQuantity"=> [
                         "value"=> $result->measureRange->display,
                         "unit"=> $result->measure->unit,
-                        "system"=> "",//todo: populate this resource accordingly
+                        "system"=> "http://unitsofmeasure.org",
                         "code"=> $result->measure->unit
                       ]
                     ];
@@ -336,75 +342,124 @@ class EMR extends Model{
 
                     $contained[] = [
                       "resourceType"=> "Observation",
-                      "id"=> $result->id,//todo: check for identification of tests if such a thing exists
+                      "id"=> "observation".$result->id,
                       "extension"=> [
                         [
-                          "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $test->testType->alias,
+                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                          "valueCode"=> $emrAlias,
                         ]
                       ],
+                      "status" => "final",
                       "code"=> [
                         "coding"=> [
                           [
-                            "system"=> "http=>//loinc.org",
-                            "code"=> "",//todo: update loinc code
-                            "display"=> ""//todo: update loinc display
+                            "system"=> "http://loinc.org",
+                            // todo: put the system on the alias or testtypemapping table
+                            "code"=> "",//todo: update loinc code //718-7
+                            "display"=> ""//todo: update loinc display//Hemoglobin [Mass/volume] in Blood
                           ]
                         ]
                       ],
-                      "effectiveDateTime"=> $test->time_completed,
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
                       "performer"=> [
                         [
                           "reference"=> $test->testedBy->name,
                         ]
                       ],
-                      "valueQuantity"=> [
-                        "value"=> $result->measureRange->display,
-                        "unit"=> $result->measure->unit,
-                        "system"=> "",//todo: populate this resource accordingly
-                        "code"=> $result->measure->unit
-                      ]
-                    ];
-
-
-                    $contained[] = [
-                        'code' => $result->measure->name,
-                        'valueString' => $result->measureRange->display,
+                      "valueString"=> $result->measureRange->display,
                     ];
                 }else if ($result->measure->measure_type_id == MeasureType::multi_alphanumeric) {
-                    // adjust to capture multiple, will need some looping of measure ranges
                     $contained[] = [
-                        'code' => $result->measure->name,
-                        'valueString' => $result->measureRange->display,
+                      "resourceType"=> "Observation",
+                      "id"=> "observation".$result->id,
+                      "extension"=> [
+                        [
+                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                          "valueCode"=> $emrAlias,
+                        ]
+                      ],
+                      "status" => "final",
+                      "code"=> [
+                        "coding"=> [
+                          [
+                            "system"=> "http://loinc.org",
+                            "code"=> "",//todo: update loinc code
+                            "display"=> ""//todo: update loinc display
+                          ]
+                        ]
+                      ],
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
+                      "performer"=> [
+                        [
+                          "reference"=> $test->testedBy->name,
+                        ]
+                      ],
+                      "valueString"=> $result->measureRange->display,
                     ];
                 }else if ($result->measure->measure_type_id == MeasureType::free_text) {
                     $contained[] = [
-                        'code' => $result->measure->name,
-                        'valueString' => $result->result,
+                      "resourceType"=> "Observation",
+                      "id"=> "observation".$result->id,
+                      "extension"=> [
+                        [
+                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                          "valueCode"=> $emrAlias,
+                        ]
+                      ],
+                      "status" => "final",
+                      "code"=> [
+                        "coding"=> [
+                          [
+                            "system"=> "http://loinc.org",
+                            "code"=> "",//todo: update loinc code // 718-7
+                            "display"=> ""//todo: update loinc display // Hemoglobin [Mass/volume] in Blood
+                          ]
+                        ]
+                      ],
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
+                      "performer"=> [
+                        [
+                          "reference"=> "Practitioner/".$test->testedBy->name,
+                        ]
+                      ],
+                      "valueString"=>  $result->result,
                     ];
                 }
             }
+
             $results = [
               "resourceType"=> "DiagnosticReport",
               "contained"=> $contained,//the individual measures
               "extension"=> [
                 [
-                  "url"=> "http=>//www.mhealth4afrika.eu/fhir/StructureDefinition/eventId",
+                  "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/eventId",
                   "valueString"=> $test->encounter->identifier
                 ]
               ],
               "identifier"=> [
                 [
-                  "value"=> $test->id
+                  "value"=> "$test->id"
                 ]
               ],
               "subject"=> [
-                "reference"=>  $test->encounter->identifier
+                "reference"=>  "Patient/".$test->encounter->patient->identifier
+              ],
+             "context" => [
+                "reference" => "Encounter/".$test->encounter->identifier
+              ],
+              "status" => "final",
+              "code" => [
+                "coding" => [
+                  [
+                    "system" => "http://www.mhealth4afrika.eu/fhir/StructureDefinition/diagnosticReportCode",
+                    "code" => "blis-lab"
+                  ]
+                ]
               ],
               "performer"=> [
                 [
                   "actor"=> [
-                    "reference"=> $test->testedBy->name
+                    "reference"=> "Practitioner/".$test->testedBy->email
                   ]
                 ]
               ],
@@ -426,9 +481,10 @@ class EMR extends Model{
                         'Content-type' => 'application/json',
                         'Authorization' => 'Bearer '.$accessToken
                     ],
-                    'json' => json_encode($results)
+                    'json' => $results
                 ]);
             } catch (\GuzzleHttp\Exception\ClientException $e) {
+                \Log::info($e->getMessage());
                 $this->getToken($test->id, $test->thirdPartyCreator->access->email);
             }
         }
