@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-use \ILabAfrica\EMRInterface\DiagnosticOrderStatus;
+use \ILabAfrica\EMRInterface\Models\DiagnosticOrderStatus;
 
 class CreateEmrInterfaceTables extends Migration
 {
@@ -18,7 +18,10 @@ class CreateEmrInterfaceTables extends Migration
             $table->increments('id');
             $table->integer('client_id')->unsigned();
             $table->integer('test_type_id')->unsigned();
-            $table->string('emr_alias');
+            $table->string('emr_alias')->nullable();
+            $table->string('system')->nullable();
+            $table->string('code')->nullable();
+            $table->string('display')->nullable();
         });
 
         Schema::create('diagnostic_orders', function (Blueprint $table) {

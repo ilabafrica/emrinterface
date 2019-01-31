@@ -1,6 +1,6 @@
 <?php
 
-namespace ILabAfrica\EMRInterface;
+namespace ILabAfrica\EMRInterface\Models;
 
 use Illuminate\Database\Eloquent\Model;
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace ILabAfrica\EMRInterface;
+namespace ILabAfrica\EMRInterface\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,6 +11,5 @@ class EmrTestTypeAlias extends Model{
     {
         return $this->belongsTo('ILabAfrica\EMRInterface\DiagnosticOrder');
     }
-
 
 }

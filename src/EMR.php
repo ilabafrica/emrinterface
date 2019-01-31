@@ -15,10 +15,11 @@ use Illuminate\Http\Request;
 use App\Models\EncounterClass;
 use App\Models\TestTypeCategory;
 use Illuminate\Database\Eloquent\Model;
-use ILabAfrica\EMRInterface\DiagnosticOrder;
-use ILabAfrica\EMRInterface\TestTypeMapping;
-use ILabAfrica\EMRInterface\DiagnosticOrderStatus;
 use GuzzleHttp\Exception\ClientException;
+use ILabAfrica\EMRInterface\Models\DiagnosticOrder;
+use ILabAfrica\EMRInterface\Models\TestTypeMapping;
+use ILabAfrica\EMRInterface\Models\EmrTestTypeAlias;
+use ILabAfrica\EMRInterface\Models\DiagnosticOrderStatus;
 
 
 class EMR extends Model{
@@ -33,6 +34,48 @@ class EMR extends Model{
         $testTypes = TestTypeCategory::with('testTypes')->get();
 
         return response()->json($testTypes);
+    }
+
+    public function mapTestTypeGet()
+    {
+        $emrTestTypeAliases = EmrTestTypeAlias::all();
+
+        return response()->json($emrTestTypeAliases);
+    }
+
+    public function mapTestTypeStore(Request $request)
+    {
+        $emrTestTypeAlias = new EmrTestTypeAlias;
+        $emrTestTypeAlias->client_id = $request->client_id;
+        $emrTestTypeAlias->test_type_id = $request->test_type_id;
+        $emrTestTypeAlias->emr_alias = $request->emr_alias;
+        $emrTestTypeAlias->system = $request->system;
+        $emrTestTypeAlias->code = $request->code;
+        $emrTestTypeAlias->display = $request->display;
+        $emrTestTypeAlias->save();
+
+        return response()->json($emrTestTypeAlias);
+    }
+
+    public function mapTestTypeUpdate(Request $request, $id)
+    {
+        $emrTestTypeAlias = EmrTestTypeAlias::find($id);
+        $emrTestTypeAlias->client_id = $request->client_id;
+        $emrTestTypeAlias->test_type_id = $request->test_type_id;
+        $emrTestTypeAlias->emr_alias = $request->emr_alias;
+        $emrTestTypeAlias->system = $request->system;
+        $emrTestTypeAlias->code = $request->code;
+        $emrTestTypeAlias->display = $request->display;
+        $emrTestTypeAlias->save();
+
+        return response()->json($emrTestTypeAlias);
+    }
+
+    public function mapTestTypeDestroy($id)
+    {
+        $emrTestTypeAlias = EmrTestTypeAlias::find($id)->destroy();
+
+        return response()->json('');
     }
 
     // receive and add test request on queue
@@ -302,7 +345,7 @@ class EMR extends Model{
 
                 $resultRreference = ["reference" => "#observation".$result->id];
 
-                $emrAlias = EmrTestTypeAlias::find($diagnosticOrder->emr_test_type_alias_id)->emr_alias;
+                $emrTestType = EmrTestTypeAlias::find($diagnosticOrder->emr_test_type_alias_id);
                 if ($result->measure->measure_type_id == MeasureType::numeric) {
 
                     $contained[] = [
@@ -311,23 +354,23 @@ class EMR extends Model{
                       "extension"=> [
                         [
                           "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrAlias,
+                          "valueCode"=> $emrTestType->emr_alias,
                         ]
                       ],
                       "status" => "final",
                       "code"=> [
                         "coding"=> [
                           [
-                            "system"=> "http://loinc.org",
-                            "code"=> "",//todo: update loinc code
-                            "display"=> ""//todo: update loinc display
+                            "system"=> $emrTestType->system,
+                            "code"=> $emrTestType->code,
+                            "display"=> $emrTestType->display
                           ]
                         ]
                       ],
                       "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
                       "performer"=> [
                         [
-                          "reference"=> $test->testedBy->name,
+                          "reference"=> "Practitioner/".$test->testedBy->email
                         ]
                       ],
                       "valueQuantity"=> [
@@ -346,24 +389,23 @@ class EMR extends Model{
                       "extension"=> [
                         [
                           "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrAlias,
+                          "valueCode"=> $emrTestType->emr_alias,
                         ]
                       ],
                       "status" => "final",
                       "code"=> [
                         "coding"=> [
                           [
-                            "system"=> "http://loinc.org",
-                            // todo: put the system on the alias or testtypemapping table
-                            "code"=> "",//todo: update loinc code //718-7
-                            "display"=> ""//todo: update loinc display//Hemoglobin [Mass/volume] in Blood
+                            "system"=> $emrTestType->system,
+                            "code"=> $emrTestType->code,
+                            "display"=> $emrTestType->display
                           ]
                         ]
                       ],
                       "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
                       "performer"=> [
                         [
-                          "reference"=> $test->testedBy->name,
+                          "reference"=> "Practitioner/".$test->testedBy->email,
                         ]
                       ],
                       "valueString"=> $result->measureRange->display,
@@ -375,23 +417,23 @@ class EMR extends Model{
                       "extension"=> [
                         [
                           "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrAlias,
+                          "valueCode"=> $emrTestType->emr_alias,
                         ]
                       ],
                       "status" => "final",
                       "code"=> [
                         "coding"=> [
                           [
-                            "system"=> "http://loinc.org",
-                            "code"=> "",//todo: update loinc code
-                            "display"=> ""//todo: update loinc display
+                            "system"=> $emrTestType->system,
+                            "code"=> $emrTestType->code,
+                            "display"=> $emrTestType->display
                           ]
                         ]
                       ],
                       "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
                       "performer"=> [
                         [
-                          "reference"=> $test->testedBy->name,
+                          "reference"=> "Practitioner/".$test->testedBy->email
                         ]
                       ],
                       "valueString"=> $result->measureRange->display,
@@ -403,23 +445,23 @@ class EMR extends Model{
                       "extension"=> [
                         [
                           "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrAlias,
+                          "valueCode"=> $emrTestType->emr_alias,
                         ]
                       ],
                       "status" => "final",
                       "code"=> [
                         "coding"=> [
                           [
-                            "system"=> "http://loinc.org",
-                            "code"=> "",//todo: update loinc code // 718-7
-                            "display"=> ""//todo: update loinc display // Hemoglobin [Mass/volume] in Blood
+                            "system"=> $emrTestType->system,
+                            "code"=> $emrTestType->code,
+                            "display"=> $emrTestType->display
                           ]
                         ]
                       ],
                       "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
                       "performer"=> [
                         [
-                          "reference"=> "Practitioner/".$test->testedBy->name,
+                          "reference"=> "Practitioner/".$test->testedBy->email,
                         ]
                       ],
                       "valueString"=>  $result->result,
@@ -483,6 +525,9 @@ class EMR extends Model{
                     ],
                     'json' => $results
                 ]);
+                if ($response->getStatusCode() == 200) {
+                    $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
+                }
             } catch (\GuzzleHttp\Exception\ClientException $e) {
                 \Log::info($e->getMessage());
                 DiagnosticOrder::where('test_id',$testID)->update(['result_sent_attempts' => $diagnosticOrder->result_sent_attempts+1]);
@@ -494,9 +539,6 @@ class EMR extends Model{
                     \Log::info('\'result sent attempt\' exhausted');
                 }
             }
-        }
-        if ($response->getStatusCode() == 200) {
-            $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
         }
     }
 }
