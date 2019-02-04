@@ -22,6 +22,16 @@ class CreateEmrInterfaceTables extends Migration
             $table->string('system')->nullable();
             $table->string('code')->nullable();
             $table->string('display')->nullable();
+            $table->unique(['test_type_id', 'emr_alias']);
+        });
+
+        // for alphanumerics
+        Schema::create('emr_result_aliases', function (Blueprint $table) {
+            $table->increments('id');
+            $table->integer('emr_test_type_alias_id')->unsigned();
+            $table->integer('measure_range_id')->unsigned();
+            $table->string('emr_alias')->nullable();
+            $table->unique(['measure_range_id', 'emr_alias']);
         });
 
         Schema::create('diagnostic_orders', function (Blueprint $table) {
@@ -53,7 +63,7 @@ class CreateEmrInterfaceTables extends Migration
         Schema::create('emr_additional_infos', function (Blueprint $table) {
             $table->increments('id');
             $table->integer('emr_test_type_alias_id')->unsigned();
-            $table->string('type',20);//date,number,details,requested
+            $table->string('type',20);//date,number,details,requested,
         });
 
        /* Diagnostic Order Statuses */

@@ -78,6 +78,43 @@ class EMR extends Model{
         return response()->json('');
     }
 
+    public function mapResultGet($emrTestTypeAliasId)
+    {
+        $emrResultAliases = EmrResultAlias::where('emr_test_type_alias_id', $emrTestTypeAliasId)->get();
+
+        return response()->json($emrResultAliases);
+    }
+
+    public function mapResultStore(Request $request)
+    {
+        $emrResultAlias = new EmrResultAlias;
+        $emrResultAlias->emr_test_type_alias_id = $request->emr_test_type_alias_id;
+        $emrResultAlias->measure_range_id = $request->measure_range_id;
+        $emrResultAlias->emr_alias = $request->emr_alias;
+        $emrResultAlias->save();
+
+        return response()->json($emrResultAlias);
+    }
+
+    public function mapResultUpdate(Request $request, $id)
+    {
+        $emrResultAlias = EmrResultAlias::find($id);
+        $emrResultAlias->emr_test_type_alias_id = $request->emr_test_type_alias_id;
+        $emrResultAlias->measure_range_id = $request->measure_range_id;
+        $emrResultAlias->emr_alias = $request->emr_alias;
+        $emrResultAlias->save();
+
+        return response()->json($emrResultAlias);
+    }
+
+    public function mapResultDestroy($id)
+    {
+        $emrResultAlias = EmrResultAlias::find($id)->destroy();
+
+        return response()->json('');
+    }
+
+
     // receive and add test request on queue
     public function receiveTestRequest(Request $request)
     {
@@ -367,7 +404,7 @@ class EMR extends Model{
                           ]
                         ]
                       ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
                       "performer"=> [
                         [
                           "reference"=> "Practitioner/".$test->testedBy->email
@@ -402,7 +439,7 @@ class EMR extends Model{
                           ]
                         ]
                       ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
                       "performer"=> [
                         [
                           "reference"=> "Practitioner/".$test->testedBy->email,
@@ -430,7 +467,7 @@ class EMR extends Model{
                           ]
                         ]
                       ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
                       "performer"=> [
                         [
                           "reference"=> "Practitioner/".$test->testedBy->email
@@ -458,7 +495,7 @@ class EMR extends Model{
                           ]
                         ]
                       ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open("Africa/Nairobi")), 'c'),
+                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
                       "performer"=> [
                         [
                           "reference"=> "Practitioner/".$test->testedBy->email,
@@ -525,8 +562,12 @@ class EMR extends Model{
                     ],
                     'json' => $results
                 ]);
+                    \Log::info($response->getStatusCode());
                 if ($response->getStatusCode() == 200) {
                     $diagnosticOrder->update(['diagnostic_order_status_id' => DiagnosticOrderStatus::result_sent]);
+                    \Log::info('results successfully sent to emr');
+                }elseif ($response->getStatusCode() == 204) {
+                    \Log::info('204:The server successfully processed the request, but is not returning any content.');
                 }
             } catch (\GuzzleHttp\Exception\ClientException $e) {
                 \Log::info($e->getMessage());
