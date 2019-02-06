@@ -29,8 +29,8 @@ class CreateEmrInterfaceTables extends Migration
         Schema::create('emr_result_aliases', function (Blueprint $table) {
             $table->increments('id');
             $table->integer('emr_test_type_alias_id')->unsigned();
-            $table->integer('measure_range_id')->unsigned();
-            $table->string('emr_alias')->nullable();
+            $table->integer('measure_range_id')->unsigned()->nullable();
+            $table->string('emr_alias');
             $table->unique(['measure_range_id', 'emr_alias']);
         });
 

@@ -19,6 +19,7 @@ use GuzzleHttp\Exception\ClientException;
 use ILabAfrica\EMRInterface\Models\DiagnosticOrder;
 use ILabAfrica\EMRInterface\Models\TestTypeMapping;
 use ILabAfrica\EMRInterface\Models\EmrTestTypeAlias;
+use ILabAfrica\EMRInterface\Models\EmrResultAlias;
 use ILabAfrica\EMRInterface\Models\DiagnosticOrderStatus;
 
 
@@ -45,31 +46,18 @@ class EMR extends Model{
 
     public function mapTestTypeStore(Request $request)
     {
-        $emrTestTypeAlias = new EmrTestTypeAlias;
-        $emrTestTypeAlias->client_id = $request->client_id;
-        $emrTestTypeAlias->test_type_id = $request->test_type_id;
-        $emrTestTypeAlias->emr_alias = $request->emr_alias;
-        $emrTestTypeAlias->system = $request->system;
-        $emrTestTypeAlias->code = $request->code;
-        $emrTestTypeAlias->display = $request->display;
-        $emrTestTypeAlias->save();
-
+        $emrTestTypeAlias = EmrTestTypeAlias::updateOrCreate([
+            'client_id' => $request->client_id,
+            'test_type_id' => $request->test_type_id,
+            'emr_alias' => $request->emr_alias,
+        ],[
+            'system' => $request->system,
+            'code' => $request->code,
+            'display' => $request->display,
+        ]);
         return response()->json($emrTestTypeAlias);
     }
 
-    public function mapTestTypeUpdate(Request $request, $id)
-    {
-        $emrTestTypeAlias = EmrTestTypeAlias::find($id);
-        $emrTestTypeAlias->client_id = $request->client_id;
-        $emrTestTypeAlias->test_type_id = $request->test_type_id;
-        $emrTestTypeAlias->emr_alias = $request->emr_alias;
-        $emrTestTypeAlias->system = $request->system;
-        $emrTestTypeAlias->code = $request->code;
-        $emrTestTypeAlias->display = $request->display;
-        $emrTestTypeAlias->save();
-
-        return response()->json($emrTestTypeAlias);
-    }
 
     public function mapTestTypeDestroy($id)
     {
@@ -87,22 +75,9 @@ class EMR extends Model{
 
     public function mapResultStore(Request $request)
     {
-        $emrResultAlias = new EmrResultAlias;
-        $emrResultAlias->emr_test_type_alias_id = $request->emr_test_type_alias_id;
-        $emrResultAlias->measure_range_id = $request->measure_range_id;
-        $emrResultAlias->emr_alias = $request->emr_alias;
-        $emrResultAlias->save();
-
-        return response()->json($emrResultAlias);
-    }
-
-    public function mapResultUpdate(Request $request, $id)
-    {
-        $emrResultAlias = EmrResultAlias::find($id);
-        $emrResultAlias->emr_test_type_alias_id = $request->emr_test_type_alias_id;
-        $emrResultAlias->measure_range_id = $request->measure_range_id;
-        $emrResultAlias->emr_alias = $request->emr_alias;
-        $emrResultAlias->save();
+        $emrResultAlias = EmrResultAlias::updateOrCreate([
+            'emr_test_type_alias_id' => $request->emr_test_type_alias_id,
+        ],['emr_alias' => $request->emr_alias]);
 
         return response()->json($emrResultAlias);
     }
