@@ -299,18 +299,31 @@ class EMR extends Model{
         }
     }
 
-    public function getToken($testID, $thirdPartyEmail)
+        public function getToken($testID, $thirdPartyUsername, $thirdPartyPassword)
     {
         $clientLogin = new Client();
+        if (env('GRANT_TYPE') == 'Basic_Auth') {
+            $authorization = 'Basic '.base64_encode('ilab2:69d570057-8e85-5c90-be12-93e9d70f848');// todo:make dynamic
+            $grantType = 'password';
+            $contentType = 'application/x-www-form-urlencoded';
+            $contentTypeKey = 'form_params';
+        }else{
+            $authorization = '';
+            $grantType = null;
+            $contentType = 'application/json';
+            $contentTypeKey = 'json';
+        }
         // send results for individual tests for starters
         $loginResponse = $clientLogin->request('POST', env('LOGIN_URL_ML4AFRIKA', 'http://play.test/api/tpa/login'), [
             'headers' => [
+                'Authorization' => [$authorization],
                 'Accept' => 'application/json',
-                'Content-type' => 'application/json'
+                'Content-type' => $contentType
             ],
-            'json' => [
-                'email' => $thirdPartyEmail,
-                'password' => 'password'
+            $contentTypeKey => [
+                'username' => $thirdPartyUsername,
+                'password' => $thirdPartyPassword,
+                'grant_type' => $grantType
              ],
         ]);
 
@@ -550,7 +563,10 @@ class EMR extends Model{
 
                 // if attempts are still less than 3
                 if (DiagnosticOrder::where('test_id',$testID)->first()->result_sent_attempts<5) {
-                    $this->getToken($test->id, $test->thirdPartyCreator->access->email);
+                    $this->getToken(
+                        $test->id,
+                        $test->thirdPartyCreator->access->email,
+                        $test->thirdPartyCreator->access->password);
                 }else{
                     \Log::info('\'result sent attempt\' exhausted');
                 }

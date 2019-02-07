@@ -66,8 +66,9 @@ class DatabaseSeeder extends Seeder
 
         \App\Models\ThirdPartyAccess::create([
             'third_party_app_id' => $mL4AfrikaId,
-            'email' => 'ml4afrika@play.dev',
-            'password' =>  'password',
+            'username' => 'admin',
+            'email' => 'admin',
+            'password' =>  'district',
         ]);
 
         \App\Models\ThirdPartyAccess::create([
