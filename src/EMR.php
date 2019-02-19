@@ -5,6 +5,7 @@ use Auth;
 use App\Models\Name;
 use App\Models\Test;
 use App\Models\Gender;
+use App\ThirdPartyApp;
 use GuzzleHttp\Client;
 use App\Models\Patient;
 use App\Models\TestType;
@@ -13,7 +14,9 @@ use App\Models\TestStatus;
 use App\Models\MeasureType;
 use Illuminate\Http\Request;
 use App\Models\EncounterClass;
+use App\Models\ThirdPartyAccess;
 use App\Models\TestTypeCategory;
+use ILabAfrica\EMRInterface\EMR;
 use Illuminate\Database\Eloquent\Model;
 use GuzzleHttp\Exception\ClientException;
 use ILabAfrica\EMRInterface\Models\DiagnosticOrder;
@@ -28,6 +31,43 @@ class EMR extends Model{
     protected $table = 'emrs';
 
     public $timestamps = false;
+
+    public function getEMRClients()
+    {
+        $thirdParty = ThirdPartyApp::with('emr','access')->get();
+        return response()->json($thirdParty);
+    }
+
+    public function registerEMRClient()
+    {
+        $thirdParty = ThirdPartyApp::updateOrCreate([
+            'email' => ($request->email) ? $request->email : $request->username,
+        ],[
+            'name' => $request->name,
+            'username' => $request->username,
+            'password' => bcrypt($request->password),
+        ]);
+
+        $emr = EMR::updateOrCreate([
+            'third_party_app_id' => $thirdParty->id,
+        ],[
+            'result_url' => $request->result_url,
+            'data_standard' => 'fhir',
+            'knows_test_menu' => 0,
+        ]);
+
+        ThirdPartyAccess::updateOrCreate([
+            'third_party_app_id' => $request->id,
+            'username' => $request->access_username,//can be an email no problem
+        ],[
+            'email' => $request->access_username,
+            'password' => $request->access_password,
+            "client_name"=> $request->client_name,
+            "client_id"=> $request->client_id,
+            "client_secret"=> $request->client_secret,
+        ]);
+        return response()->json($thirdParty);
+    }
 
     // return test menu
     public function testMenu()
@@ -129,7 +169,6 @@ class EMR extends Model{
                     $patient->gender_id = $gender[$request->input('patient.gender')];
                     $patient->birth_date = $request->input('patient.dateOfBirth');
                     $patient->address = $request->input('address.address');
-                    // $patient->phone_number = $request->input('address.phoneNumber');
                     $patient->created_by = Auth::guard('tpa_api')->user()->id;
                     $patient->save();
 

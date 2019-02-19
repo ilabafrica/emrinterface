@@ -12,7 +12,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // TODO: CREATE CONFIG UI FOR THIS
         $defaultId = \App\ThirdPartyApp::create([
             'id' => (string) Str::uuid(),
             'name' => 'Default EMR',
@@ -36,7 +35,7 @@ class DatabaseSeeder extends Seeder
 
         // default
         \ILabAfrica\EMRInterface\EMR::create([
-            'result_url' => env('RESULT_URL_DEFAULT','http://play.test/api/medbookresult'),
+            'result_url' => env('RESULT_URL_DEFAULT','http://play.test/api/result'),
             'third_party_app_id' => $defaultId,
             'data_standard' => 'fhir',
             'knows_test_menu' => 1,
@@ -60,20 +59,22 @@ class DatabaseSeeder extends Seeder
 
         \App\Models\ThirdPartyAccess::create([
             'third_party_app_id' => $defaultId,
-            'email' => 'medbook@play.dev',
+            'email' => 'default@emr.dev',
             'password' =>  'password',
         ]);
 
         \App\Models\ThirdPartyAccess::create([
             'third_party_app_id' => $mL4AfrikaId,
             'username' => 'admin',
-            'email' => 'admin',
+            'email' => 'admin@mhealth4afrika.eu',
             'password' =>  'district',
+            'client_id' =>  'ilab2',
+            'client_secret' =>  '69d570057-8e85-5c90-be12-93e9d70f848',
         ]);
 
         \App\Models\ThirdPartyAccess::create([
             'third_party_app_id' => $sanitasId,
-            'email' => 'sanitas@play.dev',
+            'email' => 'sanitas@emr.dev',
             'password' =>  'password',
         ]);
 
