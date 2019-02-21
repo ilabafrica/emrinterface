@@ -1,0 +1,17 @@
+
+{
+    "name": "ilabafrica/emrinterface",
+    "description": "EMR Interface",
+    "authors": [
+        {
+            "name": "iLabAfrica",
+            "email": "ilabafrica@strathmore.edu"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "ILabAfrica\\EMRInterface\\": "src/"
+        }
+    }
+}
