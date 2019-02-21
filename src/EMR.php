@@ -12,6 +12,7 @@ use App\Models\TestType;
 use App\Models\Encounter;
 use App\Models\TestStatus;
 use App\Models\MeasureType;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\EncounterClass;
 use App\Models\ThirdPartyAccess;
@@ -32,15 +33,21 @@ class EMR extends Model{
 
     public $timestamps = false;
 
+    protected $fillable = [
+        'third_party_app_id', 'result_url', 'data_standard', 'knows_test_menu',
+    ];
+
+
     public function getEMRClients()
     {
         $thirdParty = ThirdPartyApp::with('emr','access')->get();
         return response()->json($thirdParty);
     }
 
-    public function registerEMRClient()
+    public function registerEMRClient(Request $request)
     {
         $thirdParty = ThirdPartyApp::updateOrCreate([
+            'id' => Str::uuid(),
             'email' => ($request->email) ? $request->email : $request->username,
         ],[
             'name' => $request->name,
@@ -57,7 +64,8 @@ class EMR extends Model{
         ]);
 
         ThirdPartyAccess::updateOrCreate([
-            'third_party_app_id' => $request->id,
+            'third_party_app_id' => $thirdParty->id,
+
             'username' => $request->access_username,//can be an email no problem
         ],[
             'email' => $request->access_username,
@@ -67,6 +75,36 @@ class EMR extends Model{
             "client_secret"=> $request->client_secret,
         ]);
         return response()->json($thirdParty);
+    }
+
+    public function updateEMRClient(Request $request, $id)
+    {
+        $thirdParty = ThirdPartyApp::findOrFail($id);
+        $thirdParty->email = ($request->email) ? $request->email : $request->username;
+        $thirdParty->name = $request->name;
+        $thirdParty->username = $request->username;  
+        $thirdParty->password = bcrypt($request->password);
+
+        $emr = EMR::findOrFail($thirdParty->emr->id);
+        $emr->result_url = $request["emr"]["result_url"];
+        
+        $access = ThirdPartyAccess::findOrFail($thirdParty->access->id);
+        $access->username = $request["access"]["username"];
+        $access->email = $request["access"]["username"];
+        $access->password = $request["access"]["password"];
+        $access->client_name = $request["access"]["client_name"];
+        $access->client_id = $request["access"]["client_id"];
+        $access->client_secret = $request["access"]["client_secret"];
+            
+        try {
+            $thirdParty->save();
+            $emr->save();
+            $access->save();
+
+            return response()->json($thirdParty);
+            } catch (\Illuminate\Database\QueryException $e) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+            }
     }
 
     // return test menu
