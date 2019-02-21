@@ -8,6 +8,7 @@ Route::group(['prefix' => 'api','middleware' => 'auth:tpa_api'], function () {
     Route::post('/mapresultget/{emr_test_type_alias_id}', 'ILabAfrica\EMRInterface\EMR@mapResultGet');
     Route::post('/mapresultstore', 'ILabAfrica\EMRInterface\EMR@mapResultStore');
     Route::post('/mapresultdestroy/{id}', 'ILabAfrica\EMRInterface\EMR@mapResultDestroy');
+
 });
 Route::group(['prefix' => 'api','middleware' => 'auth:api'], function () {
 	Route::get('/emrclients', 'ILabAfrica\EMRInterface\EMR@getEMRClients');

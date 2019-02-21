@@ -37,6 +37,7 @@ class EMR extends Model{
         'third_party_app_id', 'result_url', 'data_standard', 'knows_test_menu',
     ];
 
+
     public function getEMRClients()
     {
         $thirdParty = ThirdPartyApp::with('emr','access')->get();
@@ -64,6 +65,7 @@ class EMR extends Model{
 
         ThirdPartyAccess::updateOrCreate([
             'third_party_app_id' => $thirdParty->id,
+
             'username' => $request->access_username,//can be an email no problem
         ],[
             'email' => $request->access_username,
