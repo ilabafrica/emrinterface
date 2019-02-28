@@ -16,7 +16,7 @@ class CreateEmrInterfaceTables extends Migration
     {
         Schema::create('emr_test_type_aliases', function (Blueprint $table) {
             $table->increments('id');
-            $table->integer('client_id')->unsigned();
+            $table->uuid('client_id');
             $table->integer('test_type_id')->unsigned();
             $table->string('emr_alias')->nullable();
             $table->string('system')->nullable();

@@ -37,7 +37,6 @@ class EMR extends Model{
         'third_party_app_id', 'result_url', 'data_standard', 'knows_test_menu',
     ];
 
-
     public function getEMRClients()
     {
         $thirdParty = ThirdPartyApp::with('emr','access')->get();
@@ -117,7 +116,7 @@ class EMR extends Model{
 
     public function mapTestTypeGet()
     {
-        $emrTestTypeAliases = EmrTestTypeAlias::all();
+        $emrTestTypeAliases = EmrTestTypeAlias::with('testType.measures')->paginate(10);
 
         return response()->json($emrTestTypeAliases);
     }
@@ -146,8 +145,8 @@ class EMR extends Model{
 
     public function mapResultGet($emrTestTypeAliasId)
     {
-        $emrResultAliases = EmrResultAlias::where('emr_test_type_alias_id', $emrTestTypeAliasId)->get();
 
+        $emrResultAliases = EmrResultAlias::with('measureRange')->where('emr_test_type_alias_id', $emrTestTypeAliasId)->get();
         return response()->json($emrResultAliases);
     }
 
@@ -155,6 +154,7 @@ class EMR extends Model{
     {
         $emrResultAlias = EmrResultAlias::updateOrCreate([
             'emr_test_type_alias_id' => $request->emr_test_type_alias_id,
+            'measure_range_id' => $request->measure_range_id,
         ],['emr_alias' => $request->emr_alias]);
 
         return response()->json($emrResultAlias);
@@ -162,7 +162,8 @@ class EMR extends Model{
 
     public function mapResultDestroy($id)
     {
-        $emrResultAlias = EmrResultAlias::find($id)->destroy();
+        $emrResultAlias = EmrResultAlias::find($id);
+        $emrResultAlias->delete();
 
         return response()->json('');
     }

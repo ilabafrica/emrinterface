@@ -11,6 +11,11 @@ class EmrTestTypeAlias extends Model{
 
     public $timestamps = false;
 
+    public function testType()
+    {
+        return $this->belongsTo('App\Models\TestType');
+    }
+
     public function diagnosticOrders()
     {
         return $this->belongsTo('ILabAfrica\EMRInterface\DiagnosticOrder');

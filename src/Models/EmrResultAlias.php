@@ -16,4 +16,9 @@ class EmrResultAlias extends Model{
         return $this->belongsTo('ILabAfrica\EMRInterface\EmrTestTypeAlias');
     }
 
+    public function measureRange()
+    {
+        return $this->belongsTo('App\Models\MeasureRange');
+    }
+
 }
