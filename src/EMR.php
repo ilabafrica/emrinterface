@@ -74,7 +74,7 @@ class EMR extends Model{
             "client_id"=> $request->client_id,
             "client_secret"=> $request->client_secret,
         ]);
-        return response()->json($thirdParty);
+        return response()->json($thirdParty->loader());
     }
 
     public function updateEMRClient(Request $request, $id)
