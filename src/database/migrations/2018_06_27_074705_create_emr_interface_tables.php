@@ -63,7 +63,12 @@ class CreateEmrInterfaceTables extends Migration
         Schema::create('emr_additional_infos', function (Blueprint $table) {
             $table->increments('id');
             $table->integer('emr_test_type_alias_id')->unsigned();
-            $table->string('type',20);//date,number,details,requested,
+            $table->integer('additional_info_type_id')->unsigned();
+        });
+
+        Schema::create('additional_info_types', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('name',20);//date,number,details,requested,
         });
 
        /* Diagnostic Order Statuses */

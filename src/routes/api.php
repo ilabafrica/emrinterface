@@ -2,6 +2,7 @@
 Route::group(['prefix' => 'api','middleware' => 'auth:tpa_api'], function () {
 	Route::get('/testmenu', 'ILabAfrica\EMRInterface\EMR@testmenu');
 	Route::post('/testrequest', 'ILabAfrica\EMRInterface\EMR@receiveTestRequest');
+	Route::post('/maptesttypebynames', 'ILabAfrica\EMRInterface\EMR@mapTestTypeByNames');
 });
 
 Route::group(['prefix' => 'api','middleware' => 'auth:api'], function () {

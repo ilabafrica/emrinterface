@@ -96,14 +96,16 @@ class EMR extends Model{
         $access->client_secret = $request["access"]["client_secret"];
             
         try {
+
             $thirdParty->save();
             $emr->save();
             $access->save();
 
             return response()->json($thirdParty);
-            } catch (\Illuminate\Database\QueryException $e) {
-                return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
-            }
+        } catch (\Illuminate\Database\QueryException $e) {
+
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     }
 
     // return test menu
@@ -135,6 +137,38 @@ class EMR extends Model{
         return response()->json($emrTestTypeAlias);
     }
 
+    public function mapTestTypeByNames(Request $request)
+    {
+        $clientId = \App\ThirdPartyApp::where('name',$request->client_name)->first()->id;
+
+        $testTypes = \App\Models\TestType::where('name',$request->test_type_name);
+        if ($testTypes->count()>0) {
+            $testType = $testTypes->first();
+
+            $emrTestTypeAlias = EmrTestTypeAlias::updateOrCreate([
+                'client_id' => $clientId,
+                'test_type_id' => $testType->id,
+                'emr_alias' => $request->emr_alias,
+            ],[
+                'system' => $request->system,
+                'code' => $request->emr_alias,
+                'display' => $request->display,
+            ]);
+
+            // todo: would work best if it can be checked first that the measure is alphanumeric
+            foreach ($request->emr_measure_range_aliases as $emrMeasureRangeAlias) {
+                $emrResultAlias = EmrResultAlias::updateOrCreate([
+                    'emr_test_type_alias_id' => $emrTestTypeAlias->id,
+                    'emr_alias' => $emrMeasureRangeAlias,
+                ]);
+            }
+
+        }else{
+            $emrTestTypeAlias = null;
+        }
+
+        return response()->json($emrTestTypeAlias);
+    }
 
     public function mapTestTypeDestroy($id)
     {
@@ -145,7 +179,6 @@ class EMR extends Model{
 
     public function mapResultGet($emrTestTypeAliasId)
     {
-
         $emrResultAliases = EmrResultAlias::with('measureRange')->where('emr_test_type_alias_id', $emrTestTypeAliasId)->get();
         return response()->json($emrResultAliases);
     }
@@ -167,7 +200,6 @@ class EMR extends Model{
 
         return response()->json('');
     }
-
 
     // receive and add test request on queue
     public function receiveTestRequest(Request $request)
@@ -377,11 +409,11 @@ class EMR extends Model{
         }
     }
 
-        public function getToken($testID, $thirdPartyUsername, $thirdPartyPassword)
+    public function getToken($testID, $thirdPartyUsername, $thirdPartyPassword)
     {
         $clientLogin = new Client();
         if (env('GRANT_TYPE') == 'Basic_Auth') {
-            $authorization = 'Basic '.base64_encode('ilab2:69d570057-8e85-5c90-be12-93e9d70f848');// todo:make dynamic
+            $authorization = 'Basic '.base64_encode(env('EMR_TOKEN'));
             $grantType = 'password';
             $contentType = 'application/x-www-form-urlencoded';
             $contentTypeKey = 'form_params';
