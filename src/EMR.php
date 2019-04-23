@@ -212,7 +212,6 @@ class EMR extends Model{
         }else{
             $rules = [
                 'contained' => 'required',
-                'extension' => 'required',
                 'code' => 'required',
                 'subject' => 'required',
                 'requester' => 'required',
