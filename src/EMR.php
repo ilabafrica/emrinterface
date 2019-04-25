@@ -315,7 +315,9 @@ class EMR extends Model{
                     $encounter->patient_id = $patient->id;
                     $encounter->location_id = $request->input('location_id');
                     $encounter->practitioner_name = $contained[1]['name'][0]['given'][0]." ".$contained[1]['name'][0]['family'];
-                    $encounter->practitioner_contact = $contained[1]['telecom'][0]['value'][0];
+                    if($contained[1]['telecom'][0]['value']){
+                        $encounter->practitioner_contact = $contained[1]['telecom'][0]['value'];
+                    }
                     $encounter->save();
 
                     // recode each item in DiagnosticOrder to keep track of what has happened to it
