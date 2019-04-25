@@ -298,7 +298,7 @@ class EMR extends Model{
                         $patient->identifier = $contained[0]['identifier'][0]['value'];
                         $patient->name_id = $name->id;
                         $patient->gender_id = $gender[$contained[0]['gender']];
-                        if (strpos($contained, '/')) {
+                        if (strpos($contained[0]['birthDate'], '/')) {
                             $date = str_replace('/', '-', $contained[0]['birthDate']);
                         } else {
                             $date = $contained[0]['birthDate'];
