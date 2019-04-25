@@ -298,7 +298,12 @@ class EMR extends Model{
                         $patient->identifier = $contained[0]['identifier'][0]['value'];
                         $patient->name_id = $name->id;
                         $patient->gender_id = $gender[$contained[0]['gender']];
-                        $patient->birth_date = $contained[0]['birthDate'];
+                        if (strpos($a, '/')) {
+                            $date = str_replace('/', '-', $contained[0]['birthDate']);
+                        } else {
+                            $date = $contained[0]['birthDate'];
+                        }
+                        $patient->birth_date = date('Y-m-d', strtotime($date));
                         $patient->created_by = Auth::guard('tpa_api')->user()->id;
                         $patient->save();
                     }
