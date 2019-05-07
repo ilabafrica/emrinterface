@@ -415,35 +415,45 @@ class EMR extends Model{
         }
     }
 
-    public function getToken($testID, $thirdPartyUsername, $thirdPartyPassword)
+    public function getToken($testID, $thirdPartyAccessId, $thirdPartyPassword)
     {
         $clientLogin = new Client();
-        if (env('GRANT_TYPE') == 'Basic_Auth') {
-            $authorization = 'Basic '.base64_encode(env('EMR_TOKEN'));
-            $grantType = 'password';
-            $contentType = 'application/x-www-form-urlencoded';
-            $contentTypeKey = 'form_params';
+
+        $access = \App\Models\ThirdPartyAccess::find($thirdPartyAccessId);
+
+        $authenticationPayload = [];
+
+        if ($access->grant_type == 'password') {
+            $authenticationPayload = [
+                'headers' => [
+                    'Authorization' => 'Basic '.base64_encode($access->client_id.':'.$access->client_secret),
+                    'Accept' => 'application/json',
+                    'Content-type' => 'application/x-www-form-urlencoded',
+                ],
+                'form_params' => [
+                    'username' => 'admin',
+                    'password' => 'district',
+                    'grant_type' => 'password',
+                ],
+            ];
         }else{
-            $authorization = '';
-            $grantType = null;
-            $contentType = 'application/json';
-            $contentTypeKey = 'json';
+            // client_credentials
+            $authenticationPayload = [
+                'headers' => [
+                  'Accept' => 'application/json',
+                  'Content-type' => 'application/json'
+                ],
+                'json' => [
+                  'email' => 'ml4afrika@emr.dev',
+                  'password' => 'password'
+                ],
+            ];
         }
-        // send results for individual tests for starters
-        $loginResponse = $clientLogin->request('POST', env('LOGIN_URL_ML4AFRIKA', 'http://play.test/api/tpa/login'), [
-            'headers' => [
-                'Authorization' => [$authorization],
-                'Accept' => 'application/json',
-                'Content-type' => $contentType
-            ],
-            $contentTypeKey => [
-                'username' => $thirdPartyUsername,
-                'password' => $thirdPartyPassword,
-                'grant_type' => $grantType
-             ],
-        ]);
+
+        $loginResponse = $clientLogin->request('POST', $access->login_url, $authenticationPayload);
 
        if ($loginResponse->getStatusCode() == 200) {
+
             $accessToken = json_decode($loginResponse->getBody()->getContents())->access_token;
             \App\Models\ThirdPartyAccess::where('email',$thirdPartyEmail)->update(['access_token' => $accessToken]);
 
@@ -681,8 +691,8 @@ class EMR extends Model{
                 if (DiagnosticOrder::where('test_id',$testID)->first()->result_sent_attempts<5) {
                     $this->getToken(
                         $test->id,
-                        $test->thirdPartyCreator->access->email,
-                        $test->thirdPartyCreator->access->password);
+                        $test->thirdPartyCreator->access->id
+                    );
                 }else{
                     \Log::info('\'result sent attempt\' exhausted');
                 }
