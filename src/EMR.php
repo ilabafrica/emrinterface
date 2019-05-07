@@ -315,7 +315,7 @@ class EMR extends Model{
                     $encounter->patient_id = $patient->id;
                     $encounter->location_id = $request->input('location_id');
                     $encounter->practitioner_name = $contained[1]['name'][0]['given'][0]." ".$contained[1]['name'][0]['family'];
-                    if($contained[1]['telecom'][0]['value']){
+                    if(array_key_exists("value",$contained[1]['telecom'][0])){
                         $encounter->practitioner_contact = $contained[1]['telecom'][0]['value'];
                     }
                     $encounter->save();
