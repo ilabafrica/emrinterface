@@ -415,7 +415,7 @@ class EMR extends Model{
         }
     }
 
-    public function getToken($testID, $thirdPartyAccessId, $thirdPartyPassword)
+    public function getToken($testID, $thirdPartyAccessId)
     {
         $clientLogin = new Client();
 
