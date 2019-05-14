@@ -131,12 +131,14 @@ class EMR extends Model{
             'emr_alias' => $request->emr_alias,
         ],[
             'system' => $request->system,
-            'code' => $request->code,
+            'request_code' => $request->request_code,
+            'result_code' => $request->result_code,
             'display' => $request->display,
         ]);
         return response()->json($emrTestTypeAlias);
     }
 
+    // drive by mapping
     public function mapTestTypeByNames(Request $request)
     {
         $clientId = \App\ThirdPartyApp::where('name',$request->client_name)->first()->id;
@@ -151,10 +153,10 @@ class EMR extends Model{
                 'emr_alias' => $request->emr_alias,
             ],[
                 'system' => $request->system,
-                'code' => $request->emr_alias,
-                'display' => $request->display,
+                'request_code' => $request->request_code,
+                'result_code' => $request->result_code,
+                'display' => $request->result_code,
             ]);
-
             // todo: would work best if it can be checked first that the measure is alphanumeric
             foreach ($request->emr_measure_range_aliases as $emrMeasureRangeAlias) {
                 $emrResultAlias = EmrResultAlias::updateOrCreate([
@@ -276,7 +278,7 @@ class EMR extends Model{
                         });
                 }else if (Auth::guard('tpa_api')->user()->emr->data_standard == 'fhir') {
                     $contained =$request->input('contained');
-                    $patient = Patient::where('identifier',$contained[0]['identifier']);
+                    $patient = Patient::where('identifier',$contained[0]['identifier'][0]['value']);
 
                     // male | female | other | unknown
                     $gender = ['male' => Gender::male, 'female' => Gender::female]; 
@@ -311,7 +313,7 @@ class EMR extends Model{
 
                     // on the lab side, assuming each set of requests represent an encounter
                     $encounter = new Encounter;
-                    $encounter->identifier =$contained[0]['identifier'][0]['value'];
+                    $encounter->identifier = explode("/",$request->input('context')['reference'])[1];
                     $encounter->patient_id = $patient->id;
                     $encounter->location_id = $request->input('location_id');
                     $encounter->practitioner_name = $contained[1]['name'][0]['given'][0]." ".$contained[1]['name'][0]['family'];
@@ -455,13 +457,13 @@ class EMR extends Model{
        if ($loginResponse->getStatusCode() == 200) {
 
             $accessToken = json_decode($loginResponse->getBody()->getContents())->access_token;
-            \App\Models\ThirdPartyAccess::where('email',$thirdPartyEmail)->update(['access_token' => $accessToken]);
+            \App\Models\ThirdPartyAccess::where('email',$access->email)->update(['access_token' => $accessToken]);
 
             $this->sendTestResults($testID);
         }
     }
 
-    public function sendTestResults($testID)
+    public function sendTestResults($testID,$callFromController=false)
     {
         $diagnosticOrder = DiagnosticOrder::where('test_id',$testID);
 
@@ -494,130 +496,64 @@ class EMR extends Model{
 
             foreach ($test->results as $result) {
 
-                $resultRreference = ["reference" => "#observation".$result->id];
+                $resultRreference[] = ["reference" => "#observation".$result->id];
 
                 $emrTestType = EmrTestTypeAlias::find($diagnosticOrder->emr_test_type_alias_id);
+
+                $valueType = '';
+                $value;
+
+
                 if ($result->measure->measure_type_id == MeasureType::numeric) {
 
-                    $contained[] = [
-                      "resourceType"=> "Observation",
-                      "id"=> "observation".$result->id,
-                      "extension"=> [
-                        [
-                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrTestType->emr_alias,
-                        ]
-                      ],
-                      "status" => "final",
-                      "code"=> [
-                        "coding"=> [
-                          [
-                            "system"=> $emrTestType->system,
-                            "code"=> $emrTestType->code,
-                            "display"=> $emrTestType->display
-                          ]
-                        ]
-                      ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
-                      "performer"=> [
-                        [
-                          "reference"=> "Practitioner/".$test->testedBy->email
-                        ]
-                      ],
-                      "valueQuantity"=> [
+                    $valueType = 'valueQuantity';
+                    $value = [
                         "value"=> $result->measureRange->display,
                         "unit"=> $result->measure->unit,
                         "system"=> "http://unitsofmeasure.org",
-                        "code"=> $result->measure->unit
-                      ]
+                        "code"=> $result->measure->unit,
                     ];
 
                 }else if ($result->measure->measure_type_id == MeasureType::alphanumeric) {
+                    $valueType = 'valueString';
+                    $value = $result->measureRange->display;
 
-                    $contained[] = [
-                      "resourceType"=> "Observation",
-                      "id"=> "observation".$result->id,
-                      "extension"=> [
-                        [
-                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrTestType->emr_alias,
-                        ]
-                      ],
-                      "status" => "final",
-                      "code"=> [
-                        "coding"=> [
-                          [
-                            "system"=> $emrTestType->system,
-                            "code"=> $emrTestType->code,
-                            "display"=> $emrTestType->display
-                          ]
-                        ]
-                      ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
-                      "performer"=> [
-                        [
-                          "reference"=> "Practitioner/".$test->testedBy->email,
-                        ]
-                      ],
-                      "valueString"=> $result->measureRange->display,
-                    ];
                 }else if ($result->measure->measure_type_id == MeasureType::multi_alphanumeric) {
-                    $contained[] = [
-                      "resourceType"=> "Observation",
-                      "id"=> "observation".$result->id,
-                      "extension"=> [
-                        [
-                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrTestType->emr_alias,
-                        ]
-                      ],
-                      "status" => "final",
-                      "code"=> [
-                        "coding"=> [
-                          [
-                            "system"=> $emrTestType->system,
-                            "code"=> $emrTestType->code,
-                            "display"=> $emrTestType->display
-                          ]
-                        ]
-                      ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
-                      "performer"=> [
-                        [
-                          "reference"=> "Practitioner/".$test->testedBy->email
-                        ]
-                      ],
-                      "valueString"=> $result->measureRange->display,
-                    ];
+                    $valueType = 'valueString';
+                    $value = $result->measureRange->display;
                 }else if ($result->measure->measure_type_id == MeasureType::free_text) {
-                    $contained[] = [
-                      "resourceType"=> "Observation",
-                      "id"=> "observation".$result->id,
-                      "extension"=> [
-                        [
-                          "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
-                          "valueCode"=> $emrTestType->emr_alias,
-                        ]
-                      ],
-                      "status" => "final",
-                      "code"=> [
-                        "coding"=> [
-                          [
-                            "system"=> $emrTestType->system,
-                            "code"=> $emrTestType->code,
-                            "display"=> $emrTestType->display
-                          ]
-                        ]
-                      ],
-                      "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
-                      "performer"=> [
-                        [
-                          "reference"=> "Practitioner/".$test->testedBy->email,
-                        ]
-                      ],
-                      "valueString"=>  $result->result,
-                    ];
+                    $valueType = 'valueString';
+                    $value =  $result->result;
                 }
+
+                $contained[] = [
+                  "resourceType"=> "Observation",
+                  "id"=> "observation".$result->id,
+                  "extension"=> [
+                    [
+                      "url"=> "http://www.mhealth4afrika.eu/fhir/StructureDefinition/dataElementCode",
+                      "valueCode"=> $emrTestType->result_code,
+                    ]
+                  ],
+                  "status" => "final",
+                  "code"=> [
+                    "coding"=> [
+                      [
+                        "system"=> $emrTestType->system,
+                        "code"=> $emrTestType->result_code,
+                        "display"=> "Pregnancy Test"
+                        // "display"=> "Pregnancy Test"
+                      ]
+                    ]
+                  ],
+                  "effectiveDateTime"=> date_format(date_create($test->time_completed,timezone_open(env('TIMEZONE','Africa/Nairobi'))), 'c'),
+                  "performer"=> [
+                    [
+                      "reference"=> "Practitioner/".$test->testedBy->email
+                    ]
+                  ],
+                  $valueType => $value,
+                ];
             }
 
             $results = [
@@ -689,6 +625,11 @@ class EMR extends Model{
 
                 // if attempts are still less than 3
                 if (DiagnosticOrder::where('test_id',$testID)->first()->result_sent_attempts<5) {
+                    $this->getToken(
+                        $test->id,
+                        $test->thirdPartyCreator->access->id
+                    );
+                }elseif($callFromController){
                     $this->getToken(
                         $test->id,
                         $test->thirdPartyCreator->access->id
